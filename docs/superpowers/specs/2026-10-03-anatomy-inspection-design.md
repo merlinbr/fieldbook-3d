@@ -1,6 +1,6 @@
 # Ankylosaurus anatomy inspection
 
-Status: interaction direction and copy length/tone approved in discussion; completed specification proposed for user review. This document does not authorize implementation. Write the implementation plan only after review.
+Status: written specification approved by the user on 2026-10-04, with a request to create the implementation plan. Implementation has not been requested in this planning session.
 
 ## Goal and milestone boundary
 
@@ -65,7 +65,7 @@ Continue the existing museum-fieldbook palette, typography, and layout. No new v
 
 Stable region IDs: `armor`, `head`, `tailClub`. IDs do not change with language. Anatomy headings and prose belong with specimen content; shared interface messages such as Close note belong in the existing interface translation sources.
 
-The discussion approved the short, two-sentence tone. Source review led to two small wording adjustments: qualify the protective role of armor, and remove the unnecessary broad-beak/cropping detail. The final proposed copy is below.
+The discussion approved the short, two-sentence tone. Source review led to two small wording adjustments: qualify the protective role of armor, and remove the unnecessary broad-beak/cropping detail. The approved copy is below.
 
 ### Armor / Panzerung
 
@@ -99,7 +99,7 @@ Am Schwanzende saß eine große Verdickung aus Knochen. Forschende vermuten, das
 
 ### Evidence and limits
 
-Sources consulted on 2026-10-03:
+Sources consulted on 2026-10-04:
 
 1. [Natural History Museum: Ankylosaurus](https://www.nhm.ac.uk/discover/dino-directory/Ankylosaurus.html). Supports plant diet, a front beak with teeth, bony body plates, a heavy tail club, and probable defensive side-to-side swinging. Also explicitly notes that no complete skeleton is known and the back armor arrangement is uncertain.
 2. [Natural History Museum: Ankylosaurs — the dinosaurs with built-in armour](https://www.nhm.ac.uk/discover/ankylosaurs-the-dinosaurs-with-built-in-armour.html). Includes direct explanation from museum researcher Susannah Maidment: armor consists of bone generally embedded in skin, small teeth are characteristic of the group, and protection is a probable rather than exclusive function. Identifies osteoderms and discusses evidence from Zuul for combat between individuals.
@@ -147,4 +147,4 @@ No Field Study, narration, captions, playback timeline, pause/resume integration
 
 ## Review gate and next step
 
-Review this specification, including the proposed accessibility, gesture, error-handling details and the small source-driven wording changes. After approval and once the first exhibit's actual viewer contract is available, write a separate implementation plan against that code. Do not start anatomy implementation from this document alone.
+The user approved this specification, including the accessibility, gesture, error-handling details and source-driven wording changes. The implementation plan is [2026-10-04-anatomy-inspection.md](../plans/2026-10-04-anatomy-inspection.md), based on the current viewer and local GLB. Do not start anatomy implementation from this document alone or while the first-exhibit owner is still modifying shared viewer files.
