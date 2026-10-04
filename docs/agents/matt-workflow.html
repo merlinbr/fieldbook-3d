@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Matt Pocock skills · OMP workflow guide</title>
+<style>
+:root { color-scheme: dark; --bg:#101218; --panel:#191d26; --line:#333a49; --text:#edf0f6; --muted:#b2bacb; --mint:#a6eed0; --blue:#a9caff; --gold:#f5d291; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--text); font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+a { color:var(--blue); text-underline-offset:4px; }
+a:focus-visible, summary:focus-visible { outline:3px solid var(--mint); outline-offset:5px; }
+main { max-width:1160px; margin:auto; padding:64px 28px 40px; }
+.eyebrow { color:var(--mint); font-size:12px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+h1 { font-size:clamp(36px,6vw,64px); line-height:1.08; letter-spacing:-.045em; margin:16px 0 24px; max-width:850px; }
+h2 { font-size:28px; line-height:1.25; letter-spacing:-.025em; margin:0 0 12px; }
+h3 { font-size:20px; line-height:1.35; margin:10px 0; }
+p { margin:0 0 14px; }
+.lead { font-size:20px; max-width:790px; color:var(--muted); }
+nav { display:flex; flex-wrap:wrap; gap:10px 24px; margin:30px 0 0; }
+nav a { font-size:14px; }
+section { margin-top:56px; scroll-margin-top:24px; }
+.section-note { color:var(--muted); max-width:800px; }
+.grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.card { border:1px solid var(--line); border-radius:16px; padding:26px; background:var(--panel); }
+.card p, .card li { color:var(--muted); }
+.tag { color:var(--mint); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.tag.blue { color:var(--blue); }
+.tag.gold { color:var(--gold); }
+code { font: .88em/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--mint); overflow-wrap:anywhere; }
+.command { display:block; margin:18px 0 0; padding:13px 16px; background:#10141c; border:1px solid var(--line); border-radius:8px; white-space:pre-wrap; user-select:all; }
+.note { border-left:3px solid var(--gold); padding:12px 18px; background:#201e1a; color:#e7d9bc; border-radius:0 8px 8px 0; margin-top:20px; }
+.steps { list-style:none; padding:0; margin:24px 0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+.steps li { padding:22px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+.step-number { display:block; color:var(--blue); font-size:12px; letter-spacing:.08em; margin-bottom:16px; }
+.steps p { font-size:14px; color:var(--muted); }
+.steps h3 { font-size:18px; }
+.steps code { font-size:13px; }
+.route { font-size:18px; color:var(--mint); margin:18px 0; }
+.compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.label { color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+ul { padding-left:20px; margin:12px 0 0; }
+li + li { margin-top:8px; }
+strong { color:var(--text); }
+details { border-top:1px solid var(--line); padding:18px 0; }
+summary { cursor:pointer; font-weight:650; }
+details p { margin-top:14px; color:var(--muted); max-width:850px; }
+footer { margin-top:56px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+footer p { margin-bottom:8px; }
+@media (max-width:900px) { .steps { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:600px) { main { padding:36px 18px; } .grid,.compare,.steps { grid-template-columns:1fr; } .card { padding:22px; } section { margin-top:40px; } .lead { font-size:18px; } }
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+@media print { :root { --bg:white; --panel:white; --line:#aaa; --text:#111; --muted:#333; --mint:#154e3b; --blue:#174f87; --gold:#654200; } body { font-size:11pt; } main { padding:0; } nav { display:none; } .command,.note { background:white; } .note { color:#333; } .card,.steps li { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">Field guide / Matt Pocock skills / OMP</div>
+<h1>From “what if”<br>to working software.</h1>
+<p class="lead">Choose the next step by what is unresolved—not just how big the task is. Clarify an idea, break down a larger build, or implement a ticket that is already ready.</p>
+<nav aria-label="Guide sections">
+<a href="#start">Where to start</a><a href="#feature">Feature flow</a><a href="#planning">Spec vs. plan vs. tickets</a><a href="#commands">Ready-to-use prompts</a><a href="#notes">Practical notes</a>
+</nav>
+</header>
+
+<section id="start" aria-labelledby="start-title">
+<h2 id="start-title">01 / Where are you starting?</h2>
+<p class="section-note">Q&A is for uncertainty. It is not a ritual to repeat before every implementation.</p>
+<div class="grid">
+<article class="card">
+<span class="tag">An idea with open questions</span>
+<h3>Clarify before building.</h3>
+<p>Requirements, expected behavior, scope, or design choices are still unclear. Start a focused interview in the repository.</p>
+<code class="command">/skill:grill-with-docs Describe the feature you want to explore.</code>
+<p style="margin-top:16px">Small feature? The interview can be short. Large feature? Resolve the decisions before writing the spec. Vocabulary and architectural decisions are retained in glossary/ADR docs when appropriate.</p>
+</article>
+<article class="card">
+<span class="tag blue">A clear small feature or ready ticket</span>
+<h3>Go straight to implementation.</h3>
+<p>The desired behavior, scope, and acceptance criteria are understood. No new spec or ticket breakdown is needed just for ceremony.</p>
+<code class="command">/skill:implement GitHub issue #123. Ask about unresolved requirements before coding.</code>
+<p style="margin-top:16px">The skill assumes specified work; it does not include a mandatory interview. The agent can ask targeted questions when a consequential detail is missing.</p>
+</article>
+<article class="card">
+<span class="tag gold">A bug with an unclear cause</span>
+<h3>Diagnose, don’t guess.</h3>
+<p>A bug report is evidence of a symptom—not proof of the cause. For hard, intermittent, or regression bugs, reproduce the failure and investigate first.</p>
+<code class="command">/skill:diagnosing-bugs Describe the failure and how to reproduce it.</code>
+<p style="margin-top:16px">A small, well-understood fix can go to <code>implement</code>. Small size alone does not make an unknown cause implementation-ready.</p>
+</article>
+<article class="card">
+<span class="tag blue">A completed spec already exists</span>
+<h3>Enter the flow here.</h3>
+<p>Do not restart the interview. For a multi-session build, turn the existing spec into tickets. For a small build, implement against the spec directly.</p>
+<code class="command">/skill:to-tickets Use the completed spec. Propose the breakdown for my review before publishing.</code>
+<p style="margin-top:16px">Prefer the session that produced the spec. In a fresh session, pass its file path or issue reference and any relevant decisions.</p>
+</article>
+</div>
+</section>
+
+<section id="feature" aria-labelledby="feature-title">
+<h2 id="feature-title">02 / The larger-feature flow</h2>
+<p class="section-note">For work that needs multiple implementation sessions. Each command is a separate step—not an automatic chain that starts coding when a spec is published.</p>
+<ol class="steps">
+<li><span class="step-number">01 · CLARIFY</span><h3>Q&A + decisions</h3><code>/skill:grill-with-docs</code><p>Settle what the feature should do, its constraints, and meaningful design choices.</p><p><strong>Output:</strong> shared understanding; glossary terms and ADRs as needed.</p></li>
+<li><span class="step-number">02 · CAPTURE</span><h3>Write the spec</h3><code>/skill:to-spec</code><p>Synthesize the conversation: problem, solution, user stories, implementation decisions, testing decisions, and exclusions.</p><p><strong>Output:</strong> a spec published to the configured tracker.</p></li>
+<li><span class="step-number">03 · DECOMPOSE</span><h3>Approve the tickets</h3><code>/skill:to-tickets</code><p>Propose end-to-end slices, acceptance criteria, and genuine blocking dependencies. Review the breakdown before publication.</p><p><strong>Output:</strong> self-contained tickets that can be verified individually.</p></li>
+<li><span class="step-number">04 · BUILD</span><h3>Implement a ready ticket</h3><code>/skill:implement</code><p>Work a ticket whose blockers are complete. Use TDD where possible, run checks, review the diff, and commit.</p><p><strong>Output:</strong> implemented and verified behavior.</p></li>
+</ol>
+<div class="note"><strong>The short route:</strong> Q&A → clear scope → implement in the same conversation. A small, fully specified ticket can enter directly at step 4.</div>
+<p class="section-note" style="margin-top:18px">If a design question needs runnable evidence, detour through <code>prototype</code> and bring the findings back. For a huge effort whose route is still foggy, use <code>wayfinder</code> before spec and tickets.</p>
+</section>
+
+<section id="planning" aria-labelledby="planning-title">
+<h2 id="planning-title">03 / Where did the implementation plan go?</h2>
+<div class="compare">
+<div class="card"><span class="label">Your previous flow</span><p class="route">Spec → plan → implementation</p><p>A separate implementation plan describes how the code will be changed.</p></div>
+<div class="card"><span class="label">Matt’s larger-build flow</span><p class="route">Spec → tickets → implementation</p><p>Technical decisions live in the spec; the approved ticket breakdown supplies deliverables, acceptance criteria, and execution dependencies.</p></div>
+</div>
+<div class="note"><strong>Planning still exists.</strong> It is represented by decisions and tickets, rather than a required file-by-file <code>plan.md</code>. The implementer still reads the code and works out concrete edits.</div>
+<ul>
+<li><strong>Spec:</strong> what to build, why, technical agreements, test seams, and what is out of scope.</li>
+<li><strong>Tickets:</strong> independently demoable or verifiable vertical slices—not “all backend first, all UI later.”</li>
+<li><strong>Dependencies:</strong> work any ticket whose blockers are complete; independent tickets need not be artificially serialized.</li>
+<li><strong>Grilling:</strong> clarification, not ticket splitting. <code>to-tickets</code> performs the breakdown.</li>
+</ul>
+</section>
+
+<section id="commands" aria-labelledby="commands-title">
+<h2 id="commands-title">04 / Prompts to keep handy</h2>
+<p class="section-note">OMP uses <code>/skill:name</code>. Click a command block to select its text, then copy it using your browser or keyboard.</p>
+<div class="grid">
+<article class="card"><h3>Explore a new feature</h3><code class="command">/skill:grill-with-docs I want to add [feature]. Help settle requirements, scope, and design choices before we build.</code></article>
+<article class="card"><h3>Capture the discussion</h3><code class="command">/skill:to-spec Turn our agreed discussion into a spec. Confirm the testing seams before publishing.</code></article>
+<article class="card"><h3>Replace the separate plan step</h3><code class="command">/skill:to-tickets Use [spec path or issue]. Propose end-to-end tickets with acceptance criteria and blocking dependencies. Let me approve the breakdown before publishing.</code></article>
+<article class="card"><h3>Build specified work</h3><code class="command">/skill:implement Use [ticket or small spec]. Ask about unresolved requirements before coding, then implement and verify the agreed behavior.</code></article>
+</div>
+</section>
+
+<section id="notes" aria-labelledby="notes-title">
+<h2 id="notes-title">05 / Practical notes</h2>
+<details open><summary>Stay in the discussion session through ticket creation.</summary><p>Keep clarification, spec synthesis, and ticket breakdown together while practical. Start each ticket implementation with fresh context once the ticket is self-contained. If you must switch sessions earlier, provide the spec and relevant decision records instead of relying on memory.</p></details>
+<details open><summary>Our setup uses GitHub, not local spec files by default.</summary><p>Specs and tickets are published as issues in <strong>merlinbr/fieldbook-3d</strong>. The conventions are in <code>docs/agents/issue-tracker.md</code>, <code>triage-labels.md</code>, and <code>domain.md</code>. Setup is already complete; it records the five default triage label names but does not itself create those labels on GitHub.</p></details>
+<details><summary>Grill-with-docs versus grill-me is about context, not feature size.</summary><p>Use <code>grill-with-docs</code> inside a repo: it retains resolved vocabulary and architectural decisions. Use <code>grill-me</code> for a stateless discussion outside a working directory. A small feature can still benefit from a short <code>grill-with-docs</code> session.</p></details>
+<details><summary>Implement does not mean “automatically merge and push.”</summary><p>The installed <code>implement</code> skill calls for TDD where possible, typechecking and tests, code review, and a commit to the current branch. Merging and pushing are separate repository actions; request those explicitly when wanted.</p></details>
+<details><summary>Other entry points are optional, not mandatory ceremony.</summary><p><code>triage</code> processes raw incoming reports into agent-ready work; tickets already produced by <code>to-tickets</code> do not need another triage pass. <code>ask-matt</code> helps choose a route. <code>retro</code> reflects on a completed build to improve the agent environment.</p></details>
+</section>
+
+<footer>
+<p>A practical overview of Matt Pocock’s workflow, adapted to OMP commands. This is a reference, not an exhaustive list of skills or a replacement for their current instructions.</p>
+<p>Sources: installed <code>ask-matt</code>, <code>to-spec</code>, <code>to-tickets</code>, and <code>implement</code> skills, plus this repo’s setup. <a href="https://github.com/mattpocock/skills">Upstream skills repository</a>.</p>
+<p>Single file · embedded CSS · no scripts, fonts, or network dependencies · works offline.</p>
+</footer>
+</main>
+</body>
+</html>

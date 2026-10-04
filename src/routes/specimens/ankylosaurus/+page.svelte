@@ -45,6 +45,6 @@
         <p class="reconstruction-note">{text.reconstruction}</p>
       </div>
     </div>
-    <SpecimenViewer modelUrl={ankylosaurus.modelUrl} anatomy={text.anatomy} />
+    <SpecimenViewer modelUrl={ankylosaurus.modelUrl} anatomy={text.anatomy} recording={ankylosaurus.study} />
   </main>
 </div>

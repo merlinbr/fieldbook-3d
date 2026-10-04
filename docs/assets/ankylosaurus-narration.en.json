@@ -1,0 +1,44 @@
+{
+  "id": "ankylosaurus-en-2026-10-04-rowan-9232493bd36d",
+  "language": "en",
+  "url": "http://127.0.0.1:5194/ankylosaurus-en.mp3",
+  "duration": 51.643938,
+  "chapters": [
+    { "id": "meet", "start": 0 },
+    { "id": "scale", "start": 13.635918367346939 },
+    { "id": "armor", "start": 23.666938775510204 },
+    { "id": "world", "start": 39.053061224489795 }
+  ],
+  "cues": [
+    { "start": 0, "end": 13.635918367346939, "view": "hero" },
+    { "start": 13.635918367346939, "end": 23.666938775510204, "view": "scale" },
+    { "start": 23.666938775510204, "end": 31.44, "view": "armor" },
+    { "start": 31.44, "end": 39.053061224489795, "view": "tailClub" },
+    { "start": 39.053061224489795, "end": 51.643938, "view": "world" }
+  ],
+  "captions": [
+    { "start": 0, "end": 1.72, "text": "Meet Ankylosaurus." },
+    { "start": 2.32, "end": 6.32, "text": "With its broad body, bony armor, and heavy tail club," },
+    { "start": 6.64, "end": 8.46, "text": "this dinosaur looks formidable." },
+    { "start": 9.36, "end": 11.54, "text": "But it did not hunt other dinosaurs." },
+    { "start": 12.24, "end": 13.08, "text": "It ate plants." },
+    { "start": 13.70, "end": 16.54, "text": "An adult could reach roughly eight metres long." },
+    { "start": 17.08, "end": 19.94, "text": "The person beside it gives you a sense of that size." },
+    { "start": 20.84, "end": 23.18, "text": "This length is an estimate from fossils." },
+    { "start": 23.72, "end": 27.36, "text": "Bony plates called osteoderms formed within its skin." },
+    { "start": 27.70, "end": 30.82, "text": "They probably helped protect it like a suit of armor." },
+    { "start": 31.44, "end": 34.48, "text": "At the end of its tail was a heavy bony club." },
+    { "start": 34.94, "end": 38.74, "text": "Scientists think Ankylosaurus could swing it to strike an attacker." },
+    { "start": 39.12, "end": 42.00, "text": "Ankylosaurus lived in what is now North America," },
+    { "start": 42.34, "end": 45.84, "text": "around sixty-eight to sixty-six million years ago," },
+    { "start": 46.12, "end": 48.02, "text": "near the end of the Cretaceous Period." },
+    { "start": 48.74, "end": 51.22, "text": "Now take a closer look for yourself." }
+  ],
+  "provenance": {
+    "voice": "ElevenLabs Rowan — Gentle, Soft-Spoken & Warm; voice ID kLhAstPcnnPxqzk6gS5i. Model reported by owner: Eleven v4.",
+    "generated": "2026-10-04; all four segments regenerated after Starter activation. Owner approved the unchanged script before generation and auditioned/approved all regenerated segments in the implementation conversation.",
+    "terms": "Paid-subscription output: ElevenLabs Starter commercial license, subject to necessary rights, Terms of Service sections 1(c)/4, Prohibited Use Policy and Voice Library Addendum. Beta Services exclude production/commercial use. Reviewed 2026-10-04: https://help.elevenlabs.io/hc/en-us/articles/13313564601361-Can-I-publish-the-content-I-generate-on-the-platform ; https://elevenlabs.io/terms-of-use ; https://elevenlabs.io/terms-of-use-eu ; https://elevenlabs.io/use-policy ; https://elevenlabs.io/vla ; https://elevenlabs.io/bsa . Narration rights are separate from the application's MIT license.",
+    "attribution": "English narration generated with ElevenLabs; Rowan — Gentle, Soft-Spoken & Warm. Voluntary credit; the reviewed standard paid-output terms do not require the free-tier title attribution.",
+    "paidPlanEvidence": "Owner-supplied Starter subscription screenshot and generation confirmation in the implementation conversation, 2026-10-04. Billing evidence remains private."
+  }
+}

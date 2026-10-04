@@ -6,8 +6,15 @@
   import type { AnatomyId } from './anatomy-input.ts';
   import type { InspectionSnapshot } from './anatomy-inspection.ts';
   import type { ViewerHandle, ViewerState } from './specimen-viewer.ts';
+  import { createFieldStudy } from './field-study.ts';
+  import type { StudyHandle, StudySnapshot } from './field-study.ts';
+  import type { StudyVersion } from './study-data.ts';
 
-  let { modelUrl, anatomy }: { modelUrl: string; anatomy: AnatomyText } = $props();
+  let { modelUrl, anatomy, recording }: {
+    modelUrl: string;
+    anatomy: AnatomyText;
+    recording: { version: StudyVersion | null; error: 'missing' | 'data' | null };
+  } = $props();
   const id = $props.id();
   const instructionsId = `${id}-instructions`;
   let container: HTMLDivElement | undefined;
@@ -28,6 +35,78 @@
   let leader = $state<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   let placedId: AnatomyId | null = null;
   let hasPosition = false;
+  let study: StudyHandle | undefined;
+  let studyState = $state<StudySnapshot | null>(null);
+  let startButton = $state<HTMLButtonElement>();
+  let playButton = $state<HTMLButtonElement>();
+  let retryButton = $state<HTMLButtonElement>();
+  let studyPanel = $state<HTMLDivElement>();
+  let exploreControls: HTMLDivElement | undefined;
+  let focusGeneration = 0;
+  const studying = $derived(studyState?.active ?? false);
+  const canInspect = $derived(!studying || studyState?.phase === 'paused');
+  const targetsReady = $derived(['armor', 'tailClub'].every((id) => inspection?.regions.find((region) => region.id === id)?.available));
+  const canStart = $derived(viewerState === 'ready' && targetsReady && !!recording.version);
+  const readiness = $derived(
+    viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :
+    !targetsReady ? m.studyTargets() : recording.error === 'data' ? m.studyData() :
+    !recording.version ? m.studyMissing() : m.studyReady()
+  );
+  const studyStatus = $derived.by(() => {
+    if (!studyState?.active) return '';
+    if (studyState.error === 'blocked') return m.studyBlocked();
+    if (studyState.error === 'media') return m.studyMediaError();
+    if (studyState.error === 'data') return m.studyTimingError();
+    switch (studyState.phase) {
+      case 'loading': return m.studyLoading();
+      case 'restoring': return m.studyRestoring();
+      case 'playing': return m.studyPlaying();
+      case 'buffering': return m.studyBuffering();
+      case 'seeking': return m.studySeeking();
+      default: return m.studyPaused();
+    }
+  });
+
+  async function focusStudyControl(): Promise<void> {
+    const generation = ++focusGeneration;
+    await tick();
+    if (alive && generation === focusGeneration && studyState?.active) {
+      (studyState.phase === 'error' ? retryButton : playButton)?.focus({ preventScroll: true });
+    }
+  }
+  function startStudy(): void {
+    if (!canStart || !study) return;
+    study.start();
+    void focusStudyControl();
+  }
+  function togglePlayback(): void {
+    if (studyState?.requestedPlaying) study?.pause();
+    else {
+      const focused = document.activeElement;
+      const moveFocus = !!focused && (!!note?.contains(focused) || !!exploreControls?.contains(focused));
+      study?.play();
+      if (moveFocus) void focusStudyControl();
+    }
+  }
+  function retryStudy(): void {
+    const moveFocus = document.activeElement === retryButton;
+    study?.retry();
+    if (moveFocus) void focusStudyControl();
+  }
+  function receiveStudy(next: StudySnapshot): void {
+    const returnFocus = !!studyState?.active && !next.active && !!studyPanel?.contains(document.activeElement);
+    const focused = document.activeElement;
+    const moveErrorFocus = next.phase === 'error' && !!focused &&
+      (focused === playButton || !!note?.contains(focused) || !!exploreControls?.contains(focused));
+    studyState = next;
+    if (moveErrorFocus) void focusStudyControl();
+    if (returnFocus) {
+      const generation = ++focusGeneration;
+      void tick().then(() => {
+        if (alive && generation === focusGeneration && !studyState?.active) startButton?.focus({ preventScroll: true });
+      });
+    }
+  }
 
   function restoreFocus(region: AnatomyId | null, ready: boolean): void {
     if (!region || !note?.contains(document.activeElement)) return;
@@ -109,6 +188,10 @@
         viewer = createSpecimenViewer(container, modelUrl, (nextState) => {
           if (disposed) return;
           if (nextState !== 'ready') {
+            if (studyPanel?.contains(document.activeElement)) section?.focus({ preventScroll: true });
+            study?.dispose();
+            studyState = null;
+            focusGeneration++;
             restoreFocus(inspection?.selected ?? null, false);
             inspection = null;
           }
@@ -118,6 +201,9 @@
           if (inspection?.selected && inspection.selected !== snapshot.selected) restoreFocus(inspection.selected, viewerState === 'ready');
           inspection = snapshot;
         });
+        if (recording.version && viewerState !== 'error' && viewerState !== 'unavailable') {
+          study = createFieldStudy(recording.version, viewer.study, receiveStudy);
+        }
         const canvas = container.querySelector('canvas');
         if (canvas) {
           canvas.setAttribute('role', 'img');
@@ -126,6 +212,8 @@
         }
       } catch {
         if (!disposed) { restoreFocus(selected, false); viewerState = 'unavailable'; inspection = null; }
+        study?.dispose();
+        studyState = null;
         viewer?.dispose();
       }
     }
@@ -134,6 +222,10 @@
       disposed = true;
       alive = false;
       measureGeneration++;
+      focusGeneration++;
+      study?.dispose();
+      study = undefined;
+      studyState = null;
       observer?.disconnect();
       section?.removeEventListener('keydown', keydown);
       section?.removeEventListener('pointerdown', focusCanvas);
@@ -171,7 +263,7 @@
     {#if viewerState === 'loading'}
       {m.loading()}
     {:else if viewerState === 'ready'}
-      {m.ready()}
+      {#if canInspect}{m.ready()}{/if}
       {#each inspection?.regions ?? [] as region}
         {#if !region.available}<span>{m.anatomyUnavailable({ region: anatomy[region.id].label })}</span>{/if}
       {/each}
@@ -180,19 +272,49 @@
       <button type="button" onclick={() => window.location.reload()}>{m.reload()}</button>
     {/if}
   </p>
+  {#if studying && studyState}
+    <div class="study-ui" bind:this={studyPanel}>
+      <div class="study-heading">
+        <h2>{m.studyTitle()}</h2>
+        <p>{m.studyEnglish()}</p>
+      </div>
+      <p class="study-status" aria-live="polite" aria-atomic="true">{studyStatus}</p>
+      {#if studyState.captionsEnabled}
+        <p class="study-caption" lang="en">{studyState.caption}</p>
+      {/if}
+      <div class="study-controls" role="group" aria-label={m.studyControls()}>
+        <button type="button" bind:this={playButton} onclick={togglePlayback} disabled={studyState.phase === 'error'}>
+          {studyState.requestedPlaying ? m.studyPause() : m.studyPlay()}
+        </button>
+        {#if studyState.phase === 'error'}
+          <button type="button" bind:this={retryButton} onclick={retryStudy}>{m.studyRetry()}</button>
+        {/if}
+        <button type="button" aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
+        <button type="button" onclick={() => study?.exit()}>{m.studyExit()}</button>
+      </div>
+    </div>
+  {:else}
+    <div class="study-entry">
+      <button type="button" bind:this={startButton} disabled={!canStart} aria-describedby={`${id}-study-readiness`} onclick={startStudy}>{m.startStudy()}</button>
+      <p id={`${id}-study-readiness`} aria-live="polite" aria-atomic="true">{readiness}</p>
+      {#if recording.version}<p>{m.studyEnglish()}</p>{/if}
+    </div>
+  {/if}
+  <div bind:this={exploreControls}>
   <div class="anatomy-controls" role="group" aria-label={m.inspectAnatomy()}>
     {#each ANATOMY_IDS as region}
-      <button type="button" bind:this={buttons[region]} disabled={viewerState !== 'ready' || !inspection?.regions.find((p) => p.id === region)?.available} aria-pressed={selected === region} onclick={() => viewer?.selectAnatomy(region)}>{anatomy[region].label}</button>
+      <button type="button" bind:this={buttons[region]} disabled={!canInspect || viewerState !== 'ready' || !inspection?.regions.find((p) => p.id === region)?.available} aria-pressed={selected === region} onclick={() => viewer?.selectAnatomy(region)}>{anatomy[region].label}</button>
     {/each}
   </div>
   <div class="viewer-controls">
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.zoom(1.2)}>{m.zoomIn()}</button>
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.zoom(1 / 1.2)}>{m.zoomOut()}</button>
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.reset()}>{m.reset()}</button>
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.orbit('left')}>{m.rotateLeft()}</button>
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.orbit('right')}>{m.rotateRight()}</button>
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.orbit('up')}>{m.rotateUp()}</button>
-    <button type="button" disabled={viewerState !== 'ready'} onclick={() => viewer?.orbit('down')}>{m.rotateDown()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.zoom(1.2)}>{m.zoomIn()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.zoom(1 / 1.2)}>{m.zoomOut()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.reset()}>{m.reset()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.orbit('left')}>{m.rotateLeft()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.orbit('right')}>{m.rotateRight()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.orbit('up')}>{m.rotateUp()}</button>
+    <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.orbit('down')}>{m.rotateDown()}</button>
   </div>
-  <p class="viewer-instructions" id={instructionsId}>{m.instructions()}</p>
+  </div>
+  <p class="viewer-instructions" id={instructionsId} hidden={!canInspect}>{m.instructions()}</p>
 </section>

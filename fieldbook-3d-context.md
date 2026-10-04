@@ -565,14 +565,16 @@ Delivered first milestone (2026-10-03): the root SvelteKit/TypeScript static app
 
 Delivered anatomy milestone (2026-10-04): armor, head, and tail-club surfaces/markers/native buttons select one approved English/German note with isolated amber emphasis and no camera movement. Occluded/offscreen markers and leaders hide without removing the note; narrow/enlarged-text layouts reserve a docked edge area. Static Chromium smoke exercised bilingual selection, nearest-body blocking, mouse/touch-emulated gesture cancellation, keyboard/focus/live-region behavior, responsive layouts, missing-target/loading/WebGL failures, and delayed-load/highlight/listener disposal. The integrated type/camera/anatomy/static-build checks passed. `README.md` records the complete observed matrix and exact limits: no physical-device testing, actual screen-reader session, or production CDN deployment. The [approved anatomy specification](docs/superpowers/specs/2026-10-03-anatomy-inspection-design.md) retains the scientific sources and qualifications.
 
+Delivered narrated Meet milestone (2026-10-04–05, issue #1): the existing viewer owns composed hero framing, focused lighting, input locking, pause-to-inspect/resume, and saved-view restoration. The owner approved the unchanged script before generation, confirmed ElevenLabs Rowan generation on 2026-10-04 after Starter activation, then re-auditioned/approved all four regenerated segments. The selected full track is 51.643938 s with all 1,977 source packets preserved; complete measured chapter/caption/cue/provenance metadata is source-controlled in `docs/assets/ankylosaurus-narration.en.json` and configured locally. Real Meet playback/default captions, all paused anatomy/manual controls, composed resume, real seeking, pixel-exact saved-view restoration after resized Exit/natural completion, actual nonzero network failure and exact paused-position Retry, duration mismatch, EN/DE viewport/text-size matrix, real navigation/BFCache, and context loss passed in the built static exhibit. Native pause finalized its clock beyond a pre-pause error sample; pause/failure now capture the stopped clock, with failing-before/passing-after regression and real outage proof. README records evidence and limits: no physical-device/screen-reader/CDN/model-publication-rights verification; natural tab hiding was not reliably representable, so visibility pause/no-auto-resume used fault injection. Only Meet plays. No later chapter visuals/navigation or German recording was delivered.
+
 Remaining prototype priorities:
 
 1. Refine the model / environment experiments and verify factual claims and asset rights.
 2. Refine the delivered anatomy inspection as the exhibit is evaluated; introduce `SpecimenTerminal` only when its content needs a separate component.
-3. Implement a hard-coded `FieldStudyMode` in the same scene as exploration.
-4. Add a 30–60 second narration sequence with captions and timeline controls.
-5. Add camera choreography, anatomical highlighting, and pause-to-inspect / resume behavior.
-6. Add a scale comparison and one environmental / geological context scene.
+3. Evaluate the delivered real Meet introduction; restart any older local media responder to load its MP3 route, and verify rights-cleared external hosting before publication.
+4. Deliver later four-chapter playback/navigation using the existing native-audio study state; do not add a second scene, clock, or presentation engine.
+5. Add the later chapters' narration-aligned camera choreography/anatomical emphasis and verify pause-to-inspect/resume throughout the full study.
+6. Add the later scale comparison and geological/geographic context scene.
 7. Evaluate the complete experience before generalizing the architecture.
 
 ---

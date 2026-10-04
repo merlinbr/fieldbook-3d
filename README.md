@@ -1,6 +1,16 @@
 # Fieldbook 3D
 
-One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection is delivered. Guided Field Study remains pending.
+One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection is delivered. Meet Field Study playback is integrated; a full English audio track is now assembled locally, but narrated delivery remains blocked on audition, aligned metadata, and voice provenance.
+
+## Issue #1 delivery gate — 2026-10-04
+
+[Issue #1](https://github.com/merlinbr/fieldbook-3d/issues/1) has no comments or native blocking issues at the prerequisite review. It delivers Meet playback only, not the later four-chapter navigation/visual acceptance.
+
+The user explicitly approved the full four-section English script unchanged before production recording and approved all four regenerated segments after listening again. The selected voice is ElevenLabs **Rowan — Gentle, Soft-Spoken & Warm**, ID `kLhAstPcnnPxqzk6gS5i`; the owner confirmed generation on **2026-10-04 after Starter activation**. The selected full track is `media-dev/ankylosaurus-en.mp3` (**51.643938 seconds**); prior Inworld and free-plan ElevenLabs alternatives remain preserved but unselected. The source-controlled [complete approved version](docs/assets/ankylosaurus-narration.en.json) contains recording-derived chapters, 16 captions, visual cues, and non-secret provenance.
+
+The recording intake and **real narrated Meet static-exhibit acceptance are complete locally**. [Recording documentation](docs/assets/ankylosaurus-narration.md) records the owner's audition, generation/paid-plan evidence reference, applicable ElevenLabs terms/restrictions, voluntary attribution, exact media hash, and alignment method. Billing evidence, credentials, model, and audio remain outside Git/application output; there is no runtime ElevenLabs integration.
+
+The existing viewer integrates native audio, composed hero framing, focused lighting, pause-to-inspect, resume, default captions, explicit Retry/Exit, and saved-view restoration. Only Meet plays, ending at `scale.start = 13.635918367` seconds. Missing complete metadata still disables Start with a localized explanation. German UI visibly labels English narration and uses matching English captions. No later chapter navigation/visuals or German recording were added; production hosting/model publication rights and physical-device testing remain separate limits.
 
 ## Run locally
 
@@ -21,7 +31,7 @@ Open `/en/specimens/ankylosaurus/` or `/de/specimens/ankylosaurus/`. `/` redirec
 
 The ignored `media-dev/ankylosaurus.glb` is a real export of the supplied example, not a generated substitute in the application. It is present in this local workspace but deliberately absent from Git. A fresh checkout needs that asset regenerated or a rights-cleared externally hosted model URL. See [asset provenance and regeneration](docs/assets/ankylosaurus.md). Keep the supplied `example project/low-poly/` and its dependencies unchanged.
 
-`npm run media:dev` serves only `GET /ankylosaurus.glb` on `http://127.0.0.1:5194`, with CORS enabled. Other paths/methods return 404. Keep this process running while using the development app or local static output. It does not serve application files or expose a general directory listing.
+`npm run media:dev` serves the fixed model and optional `media-dev/ankylosaurus-en.mp3` endpoints on `http://127.0.0.1:5194`, with GET/HEAD, byte ranges, and CORS. Missing audio returns 404. It does not serve application files or expose a directory listing. This workspace's ignored `.env` is configured with the approved full version. For a fresh checkout, set `PUBLIC_ANKYLOSAURUS_STUDY_VERSION` to the [complete JSON version](docs/assets/ankylosaurus-narration.en.json), not just its URL; see [configuration instructions](docs/assets/ankylosaurus-narration.md#configure-the-approved-recording). No default or fabricated timings are used. Keep the media process running; restart an older GLB-only responder to load the new audio route.
 
 ## Check and build
 
@@ -29,6 +39,7 @@ The ignored `media-dev/ankylosaurus.glb` is a real export of the supplied exampl
 npm run check
 npm run check:camera
 npm run check:anatomy
+npm run check:study
 npm run build -- --mode development
 npm run preview
 ```
@@ -97,7 +108,57 @@ The matrix below was exercised in Chromium against `build/` served by an indepen
 | Lifetime and resource cleanup | Delayed-transfer document navigation left one ready German canvas and no stale note. Explicit disposal before delayed completion emitted only loading and no snapshots; the arriving GLB's 16 geometries/five materials were each disposed once. Three mount/dispose cycles removed their pointer listeners. Final-controller double-disposal restored materials, disposed all 17 scene geometries/six original materials/five head-highlight clones once, and removed all seven tracked window/document listeners. Context loss also released five selected head clones exactly once. |
 | Repository/media boundary | Static output contained only application HTML/JS/CSS/JSON; no model, fonts, recordings, or supplied example. Temporary instrumentation was removed; generated localization and local media remain ignored. |
 
-Limits: touch was Chromium/CDP emulation, not a physical phone/tablet. Accessibility-tree and live-region inspection were performed, not an actual screen-reader session. Text enlargement used a 200% root font-size override, not every browser's text-zoom implementation. This was development-mode static smoke with local media, not production CDN deployment. Model publication rights/scientific accuracy remain unresolved. Field Study, narration, and playback were not added.
+Limits of that anatomy milestone: touch was Chromium/CDP emulation, not a physical phone/tablet. Accessibility-tree and live-region inspection were performed, not an actual screen-reader session. Text enlargement used a 200% root font-size override, not every browser's text-zoom implementation. This was development-mode static smoke with local media, not production CDN deployment. Model publication rights/scientific accuracy remain unresolved. Field Study, narration, and playback were not added at that milestone.
+
+## Observed Meet integration verification — 2026-10-04
+
+The initial checks below are historical **code/readiness/failure-path evidence**, not successful narrated acceptance, and predate receipt of the four audio segments. That initial static build had no complete recording configuration and disabled Start. A temporary, explicitly fault-only metadata build exercised a missing MP3 against the real local host; its test timestamps/provenance were never production data. Current real-recording acceptance is recorded below.
+
+| Scenario | Observed result |
+| --- | --- |
+| Integrated checks | `npm run check:camera` and `check:anatomy` passed. `check:study` passed its metadata, audio-authority, caption-boundary, buffering, retained retry, cancellation, and cached-page state checks. After correcting conditional focus references and review findings, `npm run check` reported zero errors/warnings and the covering study check passed. |
+| Static build | `npm run build -- --mode development` passed. The existing Three.js chunk-size and `NO_COLOR`/`FORCE_COLOR` environment warnings remain unsuppressed. Final `build/` contains only application HTML/JS/CSS/JSON; no recording, GLB, fonts, or temporary harness. |
+| Final missing-recording surface | Direct EN/DE static loads showed localized missing-recording text, disabled Start, working exploration/anatomy, and no MP3 request. Head/Kopf selection plus keyboard Escape returned focus to its named button. |
+| Real viewer camera ownership | Temporary source instrumentation used the actual exported model/viewer: native zoom/orbit/reset/anatomy commands could not change the composed guided view; Pause restored normal lighting and all three notes; Resume cleared inspection; Exit restored saved position/target/zoom and ordinary lighting after resizing, with no later damping drift. Canceled composition did not overwrite paused inspection. Reduced-motion composition completed immediately. |
+| Actual static media failure | The fault-only build made zero audio requests before Start and received a real MP3 404 after Start. It cleared inspection, locked exploration, retained the hero view, displayed localized error plus Retry/Exit, and made no automatic retry. Explicit Retry made another request; Exit restored enabled exploration and returned focus to Start. |
+| Keyboard/focus/navigation | Keyboard entry/error focused Retry; retry/error retained an available Retry control. Captions choice survived retry and reset on a new start. Tab exposed a 3px focus outline. Exit preserved focus on an external language link. Full-document language navigation followed by Back produced an actual persisted back-forward-cache restore; Start remained usable afterward. |
+| Required targets and WebGL loss | Renamed armor/club targets only in an in-memory GLB response: Start disabled with the German required-target reason; Head inspection remained usable and no audio was requested. Actual `WEBGL_lose_context` during the static fault study removed canvas/study/note overlays while retaining localized failure, specimen text, and language links. |
+| Layout | EN/DE final unavailable and static fault/error surfaces exercised at 1365×768, 1024×768, and 390×844 with 100%/200% root text size. Text measured at least 16 CSS pixels and buttons at least 44×44. Controls/captions remained in normal flow without covering anatomy. A transient annotation overflow during resize was fixed by clipping stage overlays; final German resize checks with closed/open notes had no horizontal overflow at all three sizes and both text scales. |
+| Separate local HTTP media | Isolated new responder on port 5195 (the existing 5194 process was left untouched): real 99,436-byte GLB GET/HEAD, closed/open/suffix ranges returned exact bytes with 206, invalid range returned 416, and arbitrary paths returned 404. Missing MP3 returned 404; its CORS OPTIONS returned 204 and range/length headers were exposed. MP3 decoding/playback/seek were not exercised in this initial check; see the supplied-recording follow-up below. |
+| Cleanup/review | Both read-only lifecycle/UI reviews passed after correcting cached-page reuse, complete chapter cue/caption coverage, signed-URL credential validation, and disabled-control focus. Temporary source/fault-build harnesses were removed; final static output was rebuilt without their metadata. Verification tabs and services started for this work were stopped. |
+
+Limits of that initial phase: desktop Chromium with viewport emulation and a root-font-size override, not physical phone/tablet or actual screen-reader testing. At that point real Field Study playback, recording audition/alignment, and nonzero-position recovery had not been exercised. The supplied-recording and real narrated acceptance sections below supersede that gate; they do not claim later-ticket or production-CDN acceptance.
+
+### Initial Inworld follow-up — 2026-10-04
+
+The initial four Inworld segments were joined losslessly into ignored `media-dev/ankylosaurus-en.mp3`: **48.672 seconds**, 778,797 bytes. That full track is now preserved as `media-dev/ankylosaurus-en-inworld.mp3`, not selected for delivery. Its historical chapter starts were Meet `0`, Scale `12.552`, Armor `22.056`, World `36.744`; do not reuse them for ElevenLabs. FFmpeg decoding passed; actual MP3 GET/HEAD, content type, exact byte ranges, invalid-range handling, and CORS passed against the existing responder on isolated port 5195.
+
+On the built static English page, a temporary native audio element proved on-demand cross-origin playback, pause, seek to World, resume, and the initial full duration with no media error. It did **not** bypass or exercise the gated Field Study controller; Start remained disabled. No voice/provenance or caption timestamps were invented. The temporary browser surface and hosts were removed/stopped.
+
+### Regenerated ElevenLabs follow-up — received 2026-10-04
+
+The four new originals in `media-dev/en/` were combined without re-encoding and selected at the existing `media-dev/ankylosaurus-en.mp3` path. The prior full Inworld track is preserved separately; originals and earlier alternatives remain untouched. Current track: **51.643938 seconds**, 826,348 bytes. All **1,977 compressed audio packets** match the ordered source packets exactly. Fresh chapter starts: Meet `0`, Scale `13.635918367`, Armor `23.666938776`, World `39.053061224`.
+
+FFmpeg decoding, actual MP3 HTTP bytes/content type/HEAD/ranges/CORS, and on-demand cross-origin native Chromium playback/pause/seeks to all three later boundaries/resume passed. This preliminary standalone native-audio check preceded Field Study configuration and was **not Field Study acceptance**. Temporary list/tab/hosts were removed/stopped. The following integrated acceptance uses the approved regenerated version, not that separate playback surface.
+
+## Observed real narrated Meet acceptance
+
+Verification: **2026-10-04–05**. Built static `build/` served independently, with the real regenerated MP3 and GLB on a fresh isolated responder at port **5195**. The existing user-owned **5194** process was not stopped; its MP3 endpoint still returned 404, so restart that older media process before using the normal 5194 configuration. Final local configuration/build use the normal documented endpoint, not a test fault provider.
+
+| Scenario | Observed result |
+| --- | --- |
+| Recording and alignment | Owner re-auditioned and approved all four segments. Duration 51.643938 s; all 1,977 compressed packets retained. All four approved scripts are preserved exactly across 16 captions. Chapter starts come from packet boundaries; caption onsets and the 31.44 s tail-club cue come from local speech alignment, not character-count timing. |
+| Real Meet, captions, completion | No MP3 request before Start; real cross-origin MP3 returned 206 and decoded at the authored duration. Hero view showed the whole animal, focused lighting, name, and default captions. Observed caption starts were 0, 2.321168, 6.643816, 9.366706, 12.246155 s. Natural completion paused at **13.641848 s**, removed audio/overlays, returned focus to Start, and restored the changed pre-study canvas **pixel-for-pixel**. No later chapter UI was delivered. |
+| Pause, inspection, resume, Exit | Pause held the native position unchanged while all three anatomy notes, orbit and zoom worked. Resume cleared the note and locked controls while holding time during composition. Native drag/wheel could not change the guided canvas. Caption choice survived resume and a real seek to 9.5 s. Exit after viewport resize restored the original canvas exactly and re-enabled exploration. |
+| Actual transport failure and Retry | Deliberately truncated real MP3 delivery followed by HTTP 503 produced native `MEDIA_ERR_NETWORK` at **1.959184 s**, locked exploration, and focused Retry. Retry requested the same version, retained **exactly 1.959184 s**, stayed paused, and required explicit Play; recovered real playback advanced past 2.42 s. |
+| Bug found by the real outage | Native `pause()` finalized the clock about 54 ms beyond its pre-pause error sample. Capture now occurs **after** native pause in both Pause and failure paths. The regression failed before the fix (`1.95 !== 2.05`), then passed; the rebuilt real outage/Retry also retained the exact stopped position. |
+| Data and blocked-play faults | Serving the archived 48.672 s recording against the 51.643938 s version produced a readable timing error without stretching cues. A one-shot `NotAllowedError` injection exposed paused inspection and explicit Play/Exit; explicit Play then used real audio. This is fault-injected blocked-play handling, not a claim that browser policy naturally denied autoplay. |
+| Lifecycle | A visibility-change fault paused native audio, enabled inspection, and did not resume on visible. Actual full-document EN→DE navigation stopped/reset study audio. Back produced **persisted pagehide/pageshow** and allowed a fresh start from zero. Actual `WEBGL_lose_context` during real playback removed canvas/study/note overlays, stopped/unloaded audio, focused the viewer section, and retained text/language links. |
+| EN/DE layout and keyboard | Real captions/playback/Pause/Head/Exit exercised at **1365×768, 1024×768, 390×844**, both languages, **100%/200% root text size**. No horizontal overflow; captions stayed below anatomy; text ≥16 px, controls ≥44×44 px. German visibly said “Erzählung auf Englisch” with `lang="en"` captions. Keyboard Enter started Meet; reduced motion was exercised in the enlarged-text matrix. |
+| Checks | After the native-clock fix: `npm run check` reported **zero errors/warnings**; `check:camera`, `check:anatomy`, `check:study` and the development-mode static build passed. The existing large Three.js chunk warning remains unsuppressed. Final natural-playback page had no unexpected JavaScript page errors. |
+| Boundaries and cleanup | One native audio instance per viewer; no second scene/renderer clock, added application dependencies, runtime generation, later chapter implementation, or persistent preferences. Audio/model binaries remain outside source/static output. Temporary transport/alignment/browser probes and owned verification hosts were removed/stopped. |
+
+Limits: viewport/text-size emulation, not physical phone/tablet or a screen-reader session. Natural tab backgrounding could not be reliably represented by the managed browser; the visibility handler was exercised by fault injection and the existing regression. Local speech alignment does not substitute for the owner's audition. No production CDN deployment or model publication-rights verification; account-only voice restrictions were not independently inspected. These are not acceptance of the later complete four-chapter study.
 
 ## Licensing and media boundary
 

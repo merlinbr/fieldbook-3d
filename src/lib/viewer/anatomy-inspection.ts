@@ -5,7 +5,7 @@ import type { AnatomyId } from './anatomy-input.ts';
 
 export type AnatomyProjection = { id: AnatomyId; available: boolean; visible: boolean; x: number; y: number };
 export type InspectionSnapshot = { selected: AnatomyId | null; width: number; height: number; regions: readonly AnatomyProjection[] };
-export type AnatomyInspection = { select(id: AnatomyId | null): void; update(width: number, height: number): void; dispose(): void };
+export type AnatomyInspection = { select(id: AnatomyId | null): void; setEnabled(enabled: boolean): void; update(width: number, height: number): void; dispose(): void };
 const TARGETS = {
   armor: { node: 'armorGroup', anchor: [-0.01633135, 2.58094070, 0] },
   head: { node: 'headGroup', anchor: [-0.62353848, 0.16785683, 0.51888366] },
@@ -42,6 +42,7 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
   let height = -1;
   let initialized = false;
   let disposed = false;
+  let enabled = true;
   let published: InspectionSnapshot | undefined;
 
   function publish(): void {
@@ -69,13 +70,21 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
     return copy;
   }
   function select(id: AnatomyId | null): void {
-    if (disposed || (id !== null && !targets.find((t) => t.id === id)?.available) || !input.select(id)) return;
+    if (disposed || (id !== null && (!enabled || !targets.find((t) => t.id === id)?.available)) || !input.select(id)) return;
     restore();
     if (id) for (const mesh of targets.find((t) => t.id === id)!.meshes) {
       originals.set(mesh, mesh.material);
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(highlightMaterial) : highlightMaterial(mesh.material);
     }
     publish();
+  }
+  function setEnabled(next: boolean): void {
+    if (disposed || enabled === next) return;
+    input.resetGesture();
+    if (!next) select(null);
+    enabled = next;
+    initialized = false;
+    update(width, height);
   }
   function update(nextWidth: number, nextHeight: number): void {
     if (disposed) return;
@@ -92,7 +101,7 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
     targets.forEach((target, i) => {
       const region = regions[i];
       region.visible = false;
-      if (!target.available || !target.node) return;
+      if (!enabled || !target.available || !target.node) return;
       target.matrix.copy(target.node.matrixWorld);
       target.world.copy(target.local).applyMatrix4(target.matrix);
       if (width <= 0 || height <= 0) return;
@@ -110,11 +119,12 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
     publish();
   }
   function down(event: PointerEvent): void {
-    if (event.button !== 0 || (event.target !== canvas && !input.active)) return;
+    if (!enabled || event.button !== 0 || (event.target !== canvas && !input.active)) return;
     input.down(event.pointerId, event.clientX, event.clientY);
   }
   function move(event: PointerEvent): void { input.move(event.pointerId, event.clientX, event.clientY); }
   function up(event: PointerEvent): void {
+    if (!enabled) return;
     const rect = canvas.getBoundingClientRect();
     const inside = event.clientX >= rect.left && event.clientX < rect.right && event.clientY >= rect.top && event.clientY < rect.bottom && document.elementFromPoint(event.clientX, event.clientY) === canvas;
     if (!input.up(event.pointerId, event.clientX, event.clientY, inside)) return;
@@ -141,7 +151,7 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
   window.addEventListener('blur', resetGesture);
   document.addEventListener('visibilitychange', visibility);
   return {
-    select, update,
+    select, setEnabled, update,
     dispose(): void {
       if (disposed) return;
       disposed = true;

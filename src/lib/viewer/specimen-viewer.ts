@@ -25,6 +25,7 @@ import { orthographicHalfHeight } from './camera-fit.ts';
 import { createAnatomyInspection } from './anatomy-inspection.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
 import type { AnatomyId } from './anatomy-input.ts';
+import type { StudyView } from './field-study.ts';
 
 export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
@@ -33,6 +34,7 @@ export type ViewerHandle = {
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
   selectAnatomy(id: AnatomyId | null): void;
+  study: StudyView;
   dispose(): void;
 };
 
@@ -98,6 +100,96 @@ export function createSpecimenViewer(
   let width = 0;
   let height = 0;
   let hasSize = false;
+  let manual = true;
+  let studyTargetsReady = false;
+  let studyActive = false;
+  let studyFrame: (() => void) | null = null;
+  const heroPosition = new Vector3();
+  const heroTarget = new Vector3();
+  const savedPosition = new Vector3();
+  const savedTarget = new Vector3();
+  const transitionPosition = new Vector3();
+  const transitionTarget = new Vector3();
+  let savedZoom = 1;
+  let transitionZoom = 1;
+  let transitionStart = 0;
+  let composition: ((completed: boolean) => void) | null = null;
+
+  function cancelComposition(): void {
+    const resolve = composition;
+    composition = null;
+    resolve?.(false);
+  }
+
+  function ownCamera(explore: boolean): void {
+    if (!controls) return;
+    controls.enableDamping = false;
+    controls.update();
+    if (manual !== explore) {
+      if (explore) controls.connect(renderer!.domElement);
+      else controls.disconnect();
+    }
+    manual = explore;
+    controls.enabled = explore;
+    controls.enableDamping = explore && !motionPreference?.matches;
+    inspection?.setEnabled(explore);
+    hemisphere.intensity = explore ? 2 : 1.1;
+    key.intensity = explore ? 2.8 : 3.5;
+    fill.intensity = explore ? 0.8 : 0.35;
+  }
+
+  function applyHero(): void {
+    if (!controls) return;
+    camera.position.copy(heroPosition);
+    controls.target.copy(heroTarget);
+    camera.zoom = 1;
+    controls.update();
+    camera.updateProjectionMatrix();
+  }
+
+  const study: StudyView = {
+    begin() {
+      if (disposed || state !== 'ready' || !controls || !studyTargetsReady || studyActive) return false;
+      ownCamera(false);
+      savedPosition.copy(camera.position);
+      savedTarget.copy(controls.target);
+      savedZoom = camera.zoom;
+      studyActive = true;
+      return true;
+    },
+    compose() {
+      cancelComposition();
+      if (disposed || !studyActive || !controls) return Promise.resolve(false);
+      ownCamera(false);
+      if (motionPreference?.matches) {
+        applyHero();
+        return Promise.resolve(true);
+      }
+      transitionPosition.copy(camera.position);
+      transitionTarget.copy(controls.target);
+      transitionZoom = camera.zoom;
+      transitionStart = performance.now();
+      return new Promise<boolean>((resolve) => { composition = resolve; });
+    },
+    pause() {
+      cancelComposition();
+      if (!disposed && studyActive) ownCamera(true);
+    },
+    exit() {
+      cancelComposition();
+      studyFrame = null;
+      if (disposed || !studyActive || !controls) return;
+      ownCamera(false);
+      camera.position.copy(savedPosition);
+      controls.target.copy(savedTarget);
+      camera.zoom = savedZoom;
+      controls.update();
+      updateFrustum();
+      studyActive = false;
+      ownCamera(true);
+    },
+    setFrame(callback) { studyFrame = disposed ? null : callback; }
+  };
 
   function notify(nextState: ViewerState): void {
     if (disposed) return;
@@ -135,19 +227,34 @@ export function createSpecimenViewer(
     if (disposed || !controls || !motionPreference) return;
     controls.enableDamping = false;
     controls.update();
-    controls.enableDamping = !motionPreference.matches;
+    controls.enableDamping = manual && !motionPreference.matches;
   }
 
   function render(): void {
-    if (disposed || !hasSize || !renderer || !controls) return;
+    if (disposed || !renderer || !controls) return;
+    studyFrame?.();
+    if (composition) {
+      const progress = motionPreference?.matches ? 1 : Math.min(1, (performance.now() - transitionStart) / 350);
+      const eased = progress * progress * (3 - 2 * progress);
+      camera.position.lerpVectors(transitionPosition, heroPosition, eased);
+      controls.target.lerpVectors(transitionTarget, heroTarget, eased);
+      camera.zoom = MathUtils.lerp(transitionZoom, 1, eased);
+      camera.updateProjectionMatrix();
+      if (progress === 1) {
+        const resolve = composition;
+        composition = null;
+        resolve(true);
+      }
+    }
     controls.update();
+    if (!hasSize) return;
     camera.updateMatrixWorld();
     inspection?.update(width, height);
     renderer.render(scene, camera);
   }
 
   function reset(): void {
-    if (disposed || state !== 'ready' || !controls) return;
+    if (disposed || !manual || state !== 'ready' || !controls) return;
     const damping = controls.enableDamping;
     controls.enableDamping = false;
     controls.update();
@@ -156,13 +263,13 @@ export function createSpecimenViewer(
   }
 
   function zoom(factor: number): void {
-    if (disposed || state !== 'ready' || !Number.isFinite(factor) || factor <= 0) return;
+    if (disposed || !manual || state !== 'ready' || !Number.isFinite(factor) || factor <= 0) return;
     camera.zoom = MathUtils.clamp(camera.zoom * factor, MIN_ZOOM, MAX_ZOOM);
     camera.updateProjectionMatrix();
   }
 
   function orbit(direction: OrbitDirection): void {
-    if (disposed || state !== 'ready' || !controls) return;
+    if (disposed || !manual || state !== 'ready' || !controls) return;
     const damping = controls.enableDamping;
     controls.enableDamping = false;
     controls.update();
@@ -186,6 +293,8 @@ export function createSpecimenViewer(
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    cancelComposition();
+    studyFrame = null;
     renderer?.setAnimationLoop(null);
     observer?.disconnect();
     motionPreference?.removeEventListener('change', updateMotionPreference);
@@ -217,9 +326,9 @@ export function createSpecimenViewer(
   }
 
   const handle: ViewerHandle = {
-    reset, zoom, orbit, dispose,
+    reset, zoom, orbit, dispose, study,
     selectAnatomy(id) {
-      if (!disposed && state === 'ready') inspection?.select(id);
+      if (!disposed && manual && state === 'ready') inspection?.select(id);
     }
   };
   notify('loading');
@@ -333,10 +442,16 @@ export function createSpecimenViewer(
             }
           }
           updateFrustum();
+          heroPosition.copy(camera.position);
+          heroTarget.copy(controls!.target);
           controls!.saveState();
           controls!.enableDamping = !motionPreference!.matches;
           controls!.enabled = true;
-          inspection = createAnatomyInspection(model, camera, renderer!.domElement, onInspection);
+          inspection = createAnatomyInspection(model, camera, renderer!.domElement, (snapshot) => {
+            studyTargetsReady = snapshot.regions.some((region) => region.id === 'armor' && region.available) &&
+              snapshot.regions.some((region) => region.id === 'tailClub' && region.available);
+            onInspection(snapshot);
+          });
           renderer!.setAnimationLoop(render);
           notify('ready');
         } catch {
