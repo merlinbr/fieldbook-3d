@@ -22,6 +22,9 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { orthographicHalfHeight } from './camera-fit.ts';
+import { createAnatomyInspection } from './anatomy-inspection.ts';
+import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
+import type { AnatomyId } from './anatomy-input.ts';
 
 export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
@@ -29,6 +32,7 @@ export type ViewerHandle = {
   reset(): void;
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
+  selectAnatomy(id: AnatomyId | null): void;
   dispose(): void;
 };
 
@@ -69,7 +73,8 @@ function disposeResources(roots: readonly Object3D[]): void {
 export function createSpecimenViewer(
   container: HTMLElement,
   modelUrl: string,
-  onState: (state: ViewerState) => void
+  onState: (state: ViewerState) => void,
+  onInspection: (snapshot: InspectionSnapshot) => void
 ): ViewerHandle {
   const scene = new Scene();
   scene.background = new Color('#22251f');
@@ -83,6 +88,7 @@ export function createSpecimenViewer(
   let controls: OrbitControls<OrthographicCamera> | undefined;
   let observer: ResizeObserver | undefined;
   let motionPreference: MediaQueryList | undefined;
+  let inspection: AnatomyInspection | undefined;
   let modelScenes: Object3D[] = [];
   let state: ViewerState = 'loading';
   let disposed = false;
@@ -114,7 +120,11 @@ export function createSpecimenViewer(
     const nextWidth = container.clientWidth;
     const nextHeight = container.clientHeight;
     hasSize = nextWidth > 0 && nextHeight > 0;
-    if (!hasSize || (nextWidth === width && nextHeight === height)) return;
+    if (!hasSize) {
+      inspection?.update(nextWidth, nextHeight);
+      return;
+    }
+    if (nextWidth === width && nextHeight === height) return;
     width = nextWidth;
     height = nextHeight;
     renderer.setSize(width, height, false);
@@ -131,6 +141,8 @@ export function createSpecimenViewer(
   function render(): void {
     if (disposed || !hasSize || !renderer || !controls) return;
     controls.update();
+    camera.updateMatrixWorld();
+    inspection?.update(width, height);
     renderer.render(scene, camera);
   }
 
@@ -178,6 +190,8 @@ export function createSpecimenViewer(
     observer?.disconnect();
     motionPreference?.removeEventListener('change', updateMotionPreference);
     renderer?.domElement.removeEventListener('webglcontextlost', handleContextLoss);
+    inspection?.dispose();
+    inspection = undefined;
     controls?.dispose();
     disposeResources([scene, ...modelScenes]);
     key.shadow.dispose();
@@ -202,7 +216,12 @@ export function createSpecimenViewer(
     fail('unavailable');
   }
 
-  const handle: ViewerHandle = { reset, zoom, orbit, dispose };
+  const handle: ViewerHandle = {
+    reset, zoom, orbit, dispose,
+    selectAnatomy(id) {
+      if (!disposed && state === 'ready') inspection?.select(id);
+    }
+  };
   notify('loading');
   try {
     renderer = new WebGLRenderer({ antialias: true });
@@ -317,6 +336,7 @@ export function createSpecimenViewer(
           controls!.saveState();
           controls!.enableDamping = !motionPreference!.matches;
           controls!.enabled = true;
+          inspection = createAnatomyInspection(model, camera, renderer!.domElement, onInspection);
           renderer!.setAnimationLoop(render);
           notify('ready');
         } catch {

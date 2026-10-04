@@ -235,3 +235,40 @@ h1 {
     flex: 1 1 9rem;
   }
 }
+
+.inspection-frame { position: relative; }
+.anatomy-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.anatomy-controls button[aria-pressed='true'] { border: 2px solid var(--amber); color: var(--amber); }
+.anatomy-marker {
+  position: absolute;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.anatomy-marker > span { width: 12px; height: 12px; border: 2px solid var(--bone); border-radius: 50%; background: var(--olive); box-shadow: 0 1px 4px #0009; }
+.anatomy-marker.selected > span { background: var(--amber); border-color: var(--amber); }
+.anatomy-leader { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+.anatomy-leader line { stroke: var(--amber); stroke-width: 1; }
+.anatomy-note {
+  position: absolute;
+  z-index: 3;
+  width: 20rem;
+  max-width: calc(100% - 24px);
+  padding: 1rem;
+  border: 1px solid #827b5c;
+  border-radius: 0.25rem;
+  background: #292d24f5;
+  color: var(--bone);
+  overflow-wrap: anywhere;
+  animation: note-entry 140ms ease-out;
+}
+.anatomy-note h2 { margin: 0 0 0.5rem; font: 600 1.125rem/1.3 'Source Sans 3', system-ui, sans-serif; }
+.anatomy-note button { margin-top: 0.75rem; }
+.anatomy-note.docked { position: relative; margin: 12px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@keyframes note-entry { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .anatomy-note { animation: none; } }

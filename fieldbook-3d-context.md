@@ -16,7 +16,7 @@ The project is inspired by the idea of a futuristic educational "filmbook": a sp
 
 This is an inspiration for the interaction model only. The UI should have its own visual identity rather than directly copying Dune or another existing work.
 
-This document is the source of truth for the project direction and agreed prototype scope. The discussion decisions below replace the original T. rex starting point with **Ankylosaurus**. The user subsequently approved the first-exhibit milestone, implemented on 2026-10-03; anatomy annotations and guided Field Study remain pending.
+This document is the source of truth for the project direction and agreed prototype scope. The discussion decisions below replace the original T. rex starting point with **Ankylosaurus**. The first-exhibit milestone was delivered on 2026-10-03 and anatomy inspection on 2026-10-04. Guided Field Study remains pending.
 
 ---
 
@@ -563,10 +563,12 @@ The core pattern stays the same:
 
 Delivered first milestone (2026-10-03): the root SvelteKit/TypeScript static app, English/German specimen documents, and browser-only `SpecimenViewer` load the exported resting Ankylosaurus GLB from separate media hosting. Mouse/touch/keyboard exploration, reset framing, responsive layout, localized failures, reduced motion, and delayed-load disposal were exercised. See `README.md` for exact evidence and limits, and `docs/assets/ankylosaurus.md` for provenance. Model reuse rights and scientific accuracy remain unverified; no production media hosting or physical-device verification has been completed.
 
+Delivered anatomy milestone (2026-10-04): armor, head, and tail-club surfaces/markers/native buttons select one approved English/German note with isolated amber emphasis and no camera movement. Occluded/offscreen markers and leaders hide without removing the note; narrow/enlarged-text layouts reserve a docked edge area. Static Chromium smoke exercised bilingual selection, nearest-body blocking, mouse/touch-emulated gesture cancellation, keyboard/focus/live-region behavior, responsive layouts, missing-target/loading/WebGL failures, and delayed-load/highlight/listener disposal. The integrated type/camera/anatomy/static-build checks passed. `README.md` records the complete observed matrix and exact limits: no physical-device testing, actual screen-reader session, or production CDN deployment. The [approved anatomy specification](docs/superpowers/specs/2026-10-03-anatomy-inspection-design.md) retains the scientific sources and qualifications.
+
 Remaining prototype priorities:
 
 1. Refine the model / environment experiments and verify factual claims and asset rights.
-2. Add the three anchored anatomy notes and selection/highlighting; introduce `SpecimenTerminal` only when its content needs a separate component.
+2. Refine the delivered anatomy inspection as the exhibit is evaluated; introduce `SpecimenTerminal` only when its content needs a separate component.
 3. Implement a hard-coded `FieldStudyMode` in the same scene as exploration.
 4. Add a 30–60 second narration sequence with captions and timeline controls.
 5. Add camera choreography, anatomical highlighting, and pause-to-inspect / resume behavior.
