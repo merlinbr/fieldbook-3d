@@ -1,6 +1,6 @@
 # First explorable Ankylosaurus exhibit
 
-Status: proposed milestone spec, awaiting user review. No implementation authorized by this document alone.
+Status: approved by the user's subsequent implementation instruction; first exhibit implemented and locally verified on 2026-10-03. See `README.md` for observed acceptance evidence and deployment/device limits. The complete guided-study prototype remains pending.
 
 ## Goal and relationship to the project
 

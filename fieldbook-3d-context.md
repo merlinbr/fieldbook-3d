@@ -16,7 +16,7 @@ The project is inspired by the idea of a futuristic educational "filmbook": a sp
 
 This is an inspiration for the interaction model only. The UI should have its own visual identity rather than directly copying Dune or another existing work.
 
-This document is the source of truth for the project direction and agreed prototype scope. The discussion decisions below replace the original T. rex starting point with **Ankylosaurus**. They do not authorize implementation yet.
+This document is the source of truth for the project direction and agreed prototype scope. The discussion decisions below replace the original T. rex starting point with **Ankylosaurus**. The user subsequently approved the first-exhibit milestone, implemented on 2026-10-03; anatomy annotations and guided Field Study remain pending.
 
 ---
 
@@ -561,17 +561,17 @@ The core pattern stays the same:
 
 ## Current priorities
 
-1. Finish the current dinosaur model / visual experiments.
-2. Select one representative low-poly model for the real project.
-3. Create the `fieldbook-3d` application shell.
-4. Implement `SpecimenViewer`.
-5. Load and frame the first Ankylosaurus model.
-6. Implement the first minimal `SpecimenTerminal` and three anchored anatomy notes.
-7. Implement a hard-coded `FieldStudyMode` in the same scene as exploration.
-8. Add a 30–60 second narration sequence with captions and timeline controls.
-9. Add camera choreography, anatomical highlighting, and pause-to-inspect / resume behavior.
-10. Add a scale comparison and one environmental / geological context scene.
-11. Evaluate the complete experience before generalizing the architecture.
+Delivered first milestone (2026-10-03): the root SvelteKit/TypeScript static app, English/German specimen documents, and browser-only `SpecimenViewer` load the exported resting Ankylosaurus GLB from separate media hosting. Mouse/touch/keyboard exploration, reset framing, responsive layout, localized failures, reduced motion, and delayed-load disposal were exercised. See `README.md` for exact evidence and limits, and `docs/assets/ankylosaurus.md` for provenance. Model reuse rights and scientific accuracy remain unverified; no production media hosting or physical-device verification has been completed.
+
+Remaining prototype priorities:
+
+1. Refine the model / environment experiments and verify factual claims and asset rights.
+2. Add the three anchored anatomy notes and selection/highlighting; introduce `SpecimenTerminal` only when its content needs a separate component.
+3. Implement a hard-coded `FieldStudyMode` in the same scene as exploration.
+4. Add a 30–60 second narration sequence with captions and timeline controls.
+5. Add camera choreography, anatomical highlighting, and pause-to-inspect / resume behavior.
+6. Add a scale comparison and one environmental / geological context scene.
+7. Evaluate the complete experience before generalizing the architecture.
 
 ---
 

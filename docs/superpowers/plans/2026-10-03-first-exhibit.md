@@ -1,5 +1,11 @@
 # First Exhibit Implementation Plan
 
+Status: user approved execution; the first exhibit was implemented and locally verified on 2026-10-03. This is the original proposed checklist, retained as planning history; see `README.md` for completed acceptance evidence and actual run instructions.
+
+Implementation adjustments: SvelteKit 3 uses native `#lib` subpath imports, `src/env.ts` / `$app/env/public`, and types from `@sveltejs/kit/hooks`. Its request event is read-only, so the URL reroute performs path normalization without replacing `event.request`. Current Three.js uses `PCFShadowMap`. Reset fitting uses projected model/plinth extents with the same 15% margin rather than an enclosing sphere; the current pure seam is `orthographicHalfHeight(horizontalRadius, verticalRadius, aspect)`. The sphere still supplies camera distance/depth planes and light scale. These choices supersede the corresponding original examples below.
+
+Clean-check adjustment: `npm run check` generates the ignored translation runtime before type checking. `tools/paraglide.mjs` shares compiler options with the Vite plugin so a fresh checkout does not depend on a prior dev/build run.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development when execution has genuinely independent slices; otherwise implement inline. Steps use checkbox (`- [ ]`) syntax for tracking. Read the approved milestone spec before implementation; this document is not approval to start coding.
 
 **Goal:** Deliver a statically generated English/German Ankylosaurus exhibit loading the exported example model, with usable mouse, touch, and keyboard exploration.

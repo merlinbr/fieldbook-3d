@@ -1,0 +1,237 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+:root {
+  font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  color: #eee9d9;
+  background: #22251f;
+  font-synthesis: none;
+  --charcoal: #22251f;
+  --olive: #394332;
+  --stone: #b7b6a2;
+  --bone: #eee9d9;
+  --amber: #dfb56d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #68705c;
+  border-radius: 0.25rem;
+  font: inherit;
+  line-height: 1.3;
+  color: var(--bone);
+  background: var(--olive);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+button:disabled {
+  color: var(--stone);
+  background: transparent;
+  border-color: #51564a;
+  cursor: default;
+}
+
+button:not(:disabled):active {
+  color: var(--charcoal);
+  background: var(--amber);
+}
+
+a {
+  color: var(--bone);
+  text-underline-offset: 0.25em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 4px;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+h1,
+.scientific-name {
+  font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.fieldbook {
+  width: min(100%, 100rem);
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 3vw, 3rem);
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  min-height: 4.25rem;
+  padding-block: 0.5rem;
+  border-bottom: 1px solid #51564a;
+}
+
+.brand {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.language-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.language-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.language-nav a[aria-current='page'] {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+.exhibit {
+  padding-block: 1.5rem 2rem;
+}
+
+.exhibit-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 1rem 3rem;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 5vw, 4.75rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.scientific-name {
+  margin-top: 0.25rem;
+  color: var(--stone);
+  font-size: 1.375rem;
+  line-height: 1.3;
+}
+
+.specimen-context {
+  max-width: 34rem;
+  font-size: 1.125rem;
+}
+
+.reconstruction-note {
+  margin-top: 0.3rem;
+  color: var(--stone);
+  font-size: 1rem;
+}
+
+.specimen-viewer {
+  min-width: 0;
+}
+
+.viewer-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(22rem, 54svh, 42rem);
+  background: var(--charcoal);
+}
+
+.viewer-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.viewer-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-height: 1.5rem;
+  margin-top: 0.5rem;
+  color: var(--stone);
+}
+
+.viewer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.viewer-instructions {
+  max-width: 65rem;
+  margin-top: 0.75rem;
+  color: var(--stone);
+}
+
+.entry {
+  padding: 2rem;
+}
+
+.entry a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 1rem;
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    border-color: var(--amber);
+  }
+
+  .language-nav a:hover {
+    color: var(--amber);
+  }
+}
+
+@media (max-width: 48rem) {
+  .exhibit-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .exhibit {
+    padding-top: 1.25rem;
+  }
+
+  .viewer-stage {
+    height: clamp(22rem, 52svh, 34rem);
+  }
+
+  .viewer-controls button {
+    flex: 1 1 9rem;
+  }
+}

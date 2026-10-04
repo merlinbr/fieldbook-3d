@@ -1,0 +1,18 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "loading": "Loading specimen…",
+  "ready": "Specimen ready to explore.",
+  "error": "The specimen could not be loaded.",
+  "webglUnavailable": "3D viewing is unavailable in this browser.",
+  "reload": "Reload page",
+  "viewerLabel": "Interactive 3D view of Ankylosaurus",
+  "instructions": "Drag to rotate. Scroll or pinch to zoom. You can also use the buttons below.",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
+  "reset": "Reset view",
+  "rotateLeft": "Rotate left",
+  "rotateRight": "Rotate right",
+  "rotateUp": "Rotate up",
+  "rotateDown": "Rotate down",
+  "languages": "Language"
+}
