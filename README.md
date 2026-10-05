@@ -1,6 +1,6 @@
 # Fieldbook 3D
 
-One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection is delivered. Meet Field Study playback is integrated; a full English audio track is now assembled locally, but narrated delivery remains blocked on audition, aligned metadata, and voice provenance.
+One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection and narrated Meet playback are delivered locally. The full English recording is configured, but Start field study deliberately plays only Meet; later guided chapters remain outside issue #1.
 
 ## Issue #1 delivery gate — 2026-10-04
 
@@ -66,7 +66,22 @@ Loading, ready, asset error, and unavailable-WebGL states are localized. Failure
 
 Select a visible anatomical surface, projected marker, or native Armor / Head / Tail club button to open one English/German note. Selection adds restrained amber emphasis without moving the camera. Selecting the same region keeps the note open; another region replaces it. Close, scoped Escape, background, or plinth dismiss; non-target body surfaces and camera controls preserve selection. Drag/pinch/canceled/outside releases never pick.
 
+Armor's interaction region includes the visible upper half of `bodyMesh` between the separate plates, measured against the body's local geometry midline. Hover and click use the same region, so crossing a plate gap does not alternate pointer/grab or expose a misleading clickable cursor. Lower torso, legs, and underbelly remain non-target surfaces; the nearest hit still blocks hidden anatomy. This extra torso mapping exists only when the real armor target is available. Selection tint remains on the armor plates.
+
 Markers and leader lines hide behind the specimen or outside the camera view; an open note remains readable. Named buttons can select hidden regions. Narrow layouts dock the same note below the stage, with controls below it. Close/Escape from the note restores focus to its anatomy button; viewer failure restores focus to the section. Educational wording and scientific limits are in the [approved anatomy specification](docs/superpowers/specs/2026-10-03-anatomy-inspection-design.md).
+
+Desktop anatomy notes use a stable top-right position, 24 CSS pixels from the stage edges, rather than following the selected point across the animal. Narrow screens, or stages that cannot fit the note with its margins, dock it below the viewer. The leader still follows the visible anatomy anchor. Larger 16px marker dots retain their 44px hitboxes; hovering a visible marker or clickable surface shows a pointer cursor, amber marker ring, and localized region label. Empty space uses a grab cursor; an active drag uses grabbing and suppresses hover. Guided playback disables this feedback; Pause restores inspection. Hover does not select, announce a note, or recolor specimen materials, and reduced motion removes the hover transition.
+
+## Observed inspection refinement — 2026-10-05
+
+- Running Vite exhibit: all three English markers and anatomical surfaces outside the marker hitboxes showed pointer/hover feedback and opened the correct note. All three notes settled at the top-right inset. German markers showed localized labels.
+- The owner's follow-up clip exposed cursor flicker over gaps between individual plates. Real nearest-hit tracing alternated armor meshes and `bodyMesh` with an unchanged camera. After mapping the visible upper torso to Armor, four 61-point native-pointer sweeps dropped from 6/11/12/3 cursor transitions to one exit transition each; a zoomed 41-point sweep and German tablet 31-point sweep stayed pointer throughout. Former gap clicks opened Armor, including during actual paused narration; Head/Tail club and orbit dragging remained usable.
+- The real Three.js geometry/controller regression failed before the fix and passed after it: plate-gap hover/click continuity, upper/lower boundary, local-space transforms, nearer-body occlusion, missing armor, and playback ownership. It runs in `npm run check:anatomy` alongside the existing gesture check; only the DOM event adapter is simulated.
+- Actual mouse orbit changed the rendered canvas while preserving the selected Head note; grabbing appeared during the gesture and hover cleared. Keyboard selection and Escape returned focus to the persistent Head control.
+- Actual native Meet audio advanced, disabled markers/pointer feedback, and restored hover while paused. Resume cleared the note/hover and continued audio; Exit removed the audio source and restored the grab cursor.
+- EN/DE at 1365, 1024, and 390 CSS pixels wide, with 100% and 200% root text size: all three notes remained readable with no horizontal overflow; phone notes docked below the stage and Close stayed at least 44×44. Actual reduced-motion emulation removed note animation and marker transitions.
+- Added `1rem` inner padding to the viewer section, preserving its keyboard-focus outline. Actual English 1568px desktop and German 390px phone checks measured 16px insets on all four sides, growing to 32px with 200% root text size, without horizontal overflow. Notes retained desktop placement/phone docking, marker picking worked with the new inset, and keyboard focus retained the 3px outline with 4px offset.
+- `npm run check`: zero errors/warnings. Existing anatomy, study, and camera checks passed. These checks used desktop Chromium viewport/text-size emulation, not physical devices or an actual screen reader. Fixed-corner placement reduces the reported overlap; it does not guarantee an unobstructed specimen at every orbit/zoom.
 
 ## Observed verification — 2026-10-03
 

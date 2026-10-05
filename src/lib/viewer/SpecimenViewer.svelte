@@ -33,8 +33,6 @@
   const announcement = $derived(selected ? `${anatomy[selected].heading}. ${anatomy[selected].body}` : '');
   let placement = $state({ x: 12, y: 12, docked: true });
   let leader = $state<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-  let placedId: AnatomyId | null = null;
-  let hasPosition = false;
   let study: StudyHandle | undefined;
   let studyState = $state<StudySnapshot | null>(null);
   let startButton = $state<HTMLButtonElement>();
@@ -128,19 +126,9 @@
     const noteWidth = note.offsetWidth;
     const noteHeight = note.offsetHeight;
     const anchor = inspection?.regions.find((p) => p.id === selected);
-    if (placedId !== selected) { placedId = selected; hasPosition = false; }
-    const docked = window.matchMedia('(max-width: 48rem)').matches || noteWidth + 24 > stageWidth || noteHeight + 24 > stageHeight;
-    let x = placement.x;
-    let y = placement.y;
-    if (!docked) {
-      if (anchor?.visible) {
-        x = anchor.x < stageWidth / 2 ? anchor.x + 20 : anchor.x - noteWidth - 20;
-        y = anchor.y - noteHeight / 2;
-        hasPosition = true;
-      } else if (!hasPosition) { x = 12; y = stageHeight - noteHeight - 12; }
-      x = Math.max(12, Math.min(x, stageWidth - noteWidth - 12));
-      y = Math.max(12, Math.min(y, stageHeight - noteHeight - 12));
-    }
+    const docked = window.matchMedia('(max-width: 48rem)').matches || noteWidth + 48 > stageWidth || noteHeight + 48 > stageHeight;
+    const x = Math.max(12, stageWidth - noteWidth - 24);
+    const y = 24;
     if (placement.x !== x || placement.y !== y || placement.docked !== docked) placement = { x, y, docked };
     // Read the docked rectangle after the DOM adopts a changed layout.
     if (note.classList.contains('docked') !== docked) { void scheduleMeasure(); return; }
@@ -241,7 +229,10 @@
     <div class="viewer-stage" bind:this={container} aria-busy={viewerState === 'loading'}>
       {#each inspection?.regions ?? [] as region (region.id)}
         {#if region.visible}
-          <span class="anatomy-marker" class:selected={selected === region.id} data-region={region.id} style:left={`${region.x}px`} style:top={`${region.y}px`} aria-hidden="true"><span></span></span>
+          <span class="anatomy-marker" class:selected={selected === region.id} class:hovered={inspection?.hovered === region.id} data-region={region.id} style:left={`${region.x}px`} style:top={`${region.y}px`} aria-hidden="true">
+            <span class="anatomy-marker-dot"></span>
+            {#if inspection?.hovered === region.id}<span class="anatomy-marker-label">{anatomy[region.id].label}</span>{/if}
+          </span>
         {/if}
       {/each}
     </div>

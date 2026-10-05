@@ -35,6 +35,7 @@ Planning can proceed while the first-exhibit agent works. Do not modify that age
 - Hide a marker when the specimen blocks its anatomy anchor. Also hide it when its anchor is outside the camera view or behind the camera.
 - Hidden markers are not interactive. Do not enlarge invisible targets through the specimen.
 - Surface picking considers the nearest visible specimen intersection across the whole animal. Map that hit to one of the three regions only if it belongs to that region. A nearer non-selectable body surface blocks a hidden selectable region.
+- Following the owner's 2026-10-05 cursor-flicker clip, treat the visible upper torso between separate armor plates as part of Armor for both hover and click. Only a nearest hit on `bodyMesh` at or above its geometry's local Y midline receives this mapping, and only when the actual armor target is available. Lower torso, underbelly, and legs remain non-selectable. Do not scan past the nearest surface, add temporal hover stickiness, or tint the body along with selected plates.
 - Markers represent a chosen surface point on each region, not its volume center. Verify anchors against the delivered GLB so a region does not incorrectly occlude its own marker. A small surface tolerance must not reveal genuinely hidden targets.
 - Permanent named anatomy controls remain available when a marker is hidden, allowing keyboard and other users to select any available region without camera assistance.
 
@@ -45,7 +46,7 @@ Planning can proceed while the first-exhibit agent works. Do not modify that age
 - Show one compact note containing the localized heading, explanation, and a clearly named close button. Use a thin leader line from the anatomy anchor toward the note.
 - The anchor follows the specimen through orbit, zoom, reset, and resize. Text stays screen-facing and readable; the note remains within the viewer's usable area and avoids essential controls.
 - If the selected anchor becomes occluded or leaves the camera view, keep the note and selection but hide the leader line. Restore the line when the anchor becomes visible again. Never draw a misleading line through the body or toward an offscreen point.
-- Keep the note in its last valid position while its anchor is hidden. If first selected from a named control while hidden, use the same edge position used for the narrow-screen note. Resize still clamps/repositions it.
+- Following the owner's 2026-10-05 inspection feedback, use a stable top-right desktop position with 24 CSS pixels of top/right inset instead of placing the note beside its anchor. Keep that position when the anchor is hidden. On narrow screens or when the note and 24px margins cannot fit, dock the note below the stage. This reduces overlap without promising collision-free placement at every camera angle.
 - Use a short fade and slight lift on opening, not continuous bobbing. Reduced motion removes this animation. Camera updates must not replay it.
 
 ## Presentation and accessibility
@@ -53,11 +54,12 @@ Planning can proceed while the first-exhibit agent works. Do not modify that age
 Continue the existing museum-fieldbook palette, typography, and layout. No new visual theme or component library.
 
 - Use Source Sans 3 for labels and notes, readable text of at least 16 CSS pixels, visible focus, and interactive targets at least 44 by 44 CSS pixels. The marker's visible dot may be smaller than its hit area.
+- Use 16px marker dots with a quiet halo. Mouse hover over a visible marker's 44px hitbox or a nearest selectable surface shows a pointer cursor, amber marker ring, and localized region label where the marker is visible. Hover never selects, announces note text, or tints specimen materials. Empty viewer space uses grab; active gestures use grabbing and clear hover. Pointer leave, blur, hidden-document state, guided playback ownership, and disposal clear hover. Reduced motion removes marker transitions; no continuous pulsing.
 - Provide a compact, visibly labeled set of native anatomy buttons near the existing peripheral controls: Armor / Head / Tail club. Use `aria-pressed` to expose selection without relying on color.
 - Keep these named buttons as the stable keyboard and assistive-technology path. Projected markers are pointer equivalents, excluded from the tab order and accessibility tree to avoid duplicate controls and focus disappearing with occlusion.
 - Announce a newly selected note's heading and text politely once, not on projection updates. The note is non-modal; do not trap focus or automatically move it after selection. Its close button remains keyboard-accessible.
 - When closing from inside the note, return focus to the corresponding persistent anatomy button. If dismissal removes no focused element, do not move focus unnecessarily.
-- On narrow screens, place the compact note in a reserved edge area of the viewer rather than letting a freely floating box cover essential controls. Allow the exhibit to grow vertically for wrapped German text and browser text enlargement; no horizontal overflow or clipped close button. This remains the same single note, not a separate content panel or mobile mode.
+- On narrow screens, place the compact note in normal flow below the viewer, not over the specimen or essential controls. Allow the exhibit to grow vertically for wrapped German text and browser text enlargement; no horizontal overflow or clipped close button. This remains the same single note, not a separate content panel or mobile mode.
 - If marker hit areas overlap, only the visually topmost marker receives the action. The named buttons provide an unambiguous alternative for every region.
 - Keep the existing stylized-reconstruction notice. Do not add claims that the teeth, plate arrangement, or inferred behavior are proven by this particular model.
 
