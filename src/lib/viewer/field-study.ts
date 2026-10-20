@@ -4,6 +4,7 @@ import type { StudyVersion } from './study-data.ts';
 export type StudyFrame = {
   chapter: 'meet' | 'scale' | 'armor';
   scaleProgress: number;
+  armorProgress: number;
   region: 'armor' | 'tailClub';
   regionProgress: number;
 };
@@ -66,6 +67,7 @@ function assignStudyFrame(
   time: number,
   out: StudyFrame,
   scaleCue: StudyCue,
+  armorCue: StudyCue,
   tailClubCue: StudyCue
 ): void {
   const scaleStart = version.chapters[1].start;
@@ -75,6 +77,7 @@ function assignStudyFrame(
     throw new RangeError('Study frames are available only during Meet, Scale, and Armor');
   }
   out.scaleProgress = 0;
+  out.armorProgress = 0;
   out.region = 'armor';
   out.regionProgress = 0;
   if (time < scaleStart) {
@@ -88,6 +91,9 @@ function assignStudyFrame(
     return;
   }
   out.chapter = 'armor';
+  const armorRamp = Math.min(0.75, armorCue.end - armorCue.start);
+  const armorProgress = Math.max(0, Math.min(1, (time - armorStart) / armorRamp));
+  out.armorProgress = armorProgress * armorProgress * (3 - 2 * armorProgress);
   if (time >= tailClubCue.start) {
     out.region = 'tailClub';
     const tailClubRamp = Math.min(0.75, tailClubCue.end - tailClubCue.start);
@@ -97,7 +103,14 @@ function assignStudyFrame(
 }
 
 export function evaluateStudyFrame(version: StudyVersion, time: number, out: StudyFrame): void {
-  assignStudyFrame(version, time, out, requireCue(version, 'scale'), requireCue(version, 'tailClub'));
+  assignStudyFrame(
+    version,
+    time,
+    out,
+    requireCue(version, 'scale'),
+    requireCue(version, 'armor'),
+    requireCue(version, 'tailClub')
+  );
 }
 
 export function createFieldStudy(
@@ -109,8 +122,11 @@ export function createFieldStudy(
   const audio = media ?? new Audio();
   const deliveredEnd = version.chapters[3].start;
   const scaleCue = requireCue(version, 'scale');
+  const armorCue = requireCue(version, 'armor');
   const tailClubCue = requireCue(version, 'tailClub');
-  const frame: StudyFrame = { chapter: 'meet', scaleProgress: 0, region: 'armor', regionProgress: 0 };
+  const frame: StudyFrame = {
+    chapter: 'meet', scaleProgress: 0, armorProgress: 0, region: 'armor', regionProgress: 0
+  };
   const state: StudySnapshot = {
     active: false, phase: 'explore', requestedPlaying: false, time: 0,
     duration: version.duration, caption: '', captionsEnabled: true, error: null, chapter: null
@@ -144,11 +160,11 @@ export function createFieldStudy(
     return {
       chapter: frame.chapter,
       scaleProgress: frame.scaleProgress,
+      armorProgress: frame.armorProgress,
       region: frame.region,
       regionProgress: frame.regionProgress
     };
   }
-
   function readTime(): boolean {
     if (metadataReady && Number.isFinite(audio.currentTime)) {
       state.time = Math.max(0, Math.min(audio.currentTime, state.duration));
@@ -157,7 +173,7 @@ export function createFieldStudy(
     if (complete) {
       state.chapter = null;
     } else {
-      assignStudyFrame(version, state.time, frame, scaleCue, tailClubCue);
+      assignStudyFrame(version, state.time, frame, scaleCue, armorCue, tailClubCue);
       state.chapter = frame.chapter;
     }
     state.caption = '';
@@ -294,6 +310,7 @@ export function createFieldStudy(
     const targetFrame: StudyFrame = {
       chapter: target.chapter,
       scaleProgress: target.scaleProgress,
+      armorProgress: target.armorProgress,
       region: target.region,
       regionProgress: target.regionProgress
     };

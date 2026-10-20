@@ -37,3 +37,14 @@ Study metadata boundaries, audio authority, retry, and cancellation assertions p
 ```
 
 No full `npm run check` was run; it is deferred to Task 3 as directed by the brief.
+
+## Fix round 1
+
+- Added `armorProgress` to `StudyFrame` and frame-copy paths. Meet/Scale keep it at 0; Armor smoothsteps from 0 to 1 starting at `armor.start`, using `min(0.75, armorCue duration)` derived from the resolved armor cue, then holds at 1.
+- Added assertions for Meet/Scale zero progress, Armor start, ramp midpoint, and hold through the chapter end.
+- Verification: `npm run check:study` passed:
+
+```text
+Study timeline, calibrated geometry, projection, and lifetime assertions passed.
+Study metadata boundaries, audio authority, retry, and cancellation assertions passed.
+```
