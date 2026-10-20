@@ -197,6 +197,24 @@ Verification: **2026-10-20**. Development-mode static `build/` served by `vite p
 
 Limits: headless Chromium with viewport emulation, not physical devices or an actual screen-reader session. The immediate Scale failure was fault-injected with a media `error` event after the earlier real request-abort path; it exercises the controller’s retained-position Retry, not a second natural network outage. Exit was exercised during playback, paused inspection, resume composition, and resize, not during buffering or an active Retry. Layout checks used a 200% root font-size override. This milestone does not deliver Armor/World presentations, chapter picker, seek UI, German audio, production CDN hosting, or verified model publication rights.
 
+## Observed narrated armor chapter acceptance — 2026-10-21
+
+Verification: **2026-10-21**. Development-mode static build served by `npm run preview`, with the real GLB and approved MP3 served by `npm run media:dev`. Headless Chromium at 1365×768 unless noted; reduced-motion and root-text-size settings were emulated.
+
+| Scenario | Observed result |
+| --- | --- |
+| Timeline and completion | Continuous real playback showed Chapter 1 through 13.6 s, Chapter 2 from 13.6–23.7 s, and Chapter 3 from 23.7 s. Natural completion restored Explore, removed study chrome, and made Start field study available. |
+| Armor and tail-club framing | At 23.7 s the armor plates filled the frame width with calibrated camera framing. After the 31.44 s cue, the tail-club filled roughly half the frame width with the tail entering from the left. Camera travel completed within the cue ramp. |
+| Guided emphasis and pause | During playback, armor plates were amber-lit and the rest of the specimen dimmed. Pausing showed normal specimen colors and lighting, visible markers, enabled anatomy controls, retained caption, and status “Narration paused. Explore or inspect, then resume. — Chapter 3 — Built-in armor”. |
+| Paused inspection and resume | All three anatomy note controls opened notes; switching Head → Tail club replaced the note. Exit from paused inspection returned to Explore with the note removed. Resume cleared the note and restored guided armor framing/emphasis before narration advanced. |
+| Exit and restoration | Exit during Armor playback from a rotated/zoomed Explore view restored the pre-study orbit and zoom; before/after screenshots matched. |
+| Reduced motion | With `prefers-reduced-motion: reduce` emulated, the composed armor view appeared at the chapter boundary and the composed tail-club view at the cue switch, without camera travel. |
+| German and narrow layout | At 1024×768, the German route showed “Kapitel 3 — Eingebauter Panzer” and “Erzählung auf Englisch”, with English captions and no horizontal overflow. At 390×844, the chapter label was present with no horizontal overflow at 100% or with root text set to 200%. |
+| Checks and build | `npm run check`, `npm run check:camera`, `npm run check:anatomy`, `npm run check:study`, and `npm run build -- --mode development` passed. The build retains its existing large-chunk and `NO_COLOR`/`FORCE_COLOR` warnings. |
+| Framing correction | Acceptance found that OrbitControls’ Explore zoom cap clamped guided region framing, initially leaving the tail-club shot framed on the whole tail. Guided framings now use the study’s own bound, and Explore bounds are restored on Exit. |
+
+Limits: headless Chromium viewport and text-size emulation, not physical-device or screen-reader testing. Exit during buffering or active Retry was not exercised. Pause exactly at the armor→tail-club cue boundary was not exercised; pause was tested inside Armor and during paused inspection. Dimming versus guided lighting was not isolated pixel-by-pixel; the playing/paused comparison showed the combined guided treatment and its removal. No production hosting or model publication-rights verification was performed.
+
 ## Licensing and media boundary
 
 The root MIT license applies to application code and project-owned text, **not separately hosted media or the supplied model by implication**. Model reuse/publication rights and scientific accuracy remain unresolved; verify them before public media publication. The GLB, textures, recordings, font binaries, and source media must remain outside Git and application static output. Ignore rules do not protect already tracked files; inspect staged paths before publishing changes.
