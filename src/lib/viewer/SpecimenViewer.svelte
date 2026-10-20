@@ -73,7 +73,8 @@
   });
   const chapterStatus = $derived(
     studyState?.chapter === 'meet' ? m.studyChapterMeet() :
-    studyState?.chapter === 'scale' ? m.studyChapterScale() : ''
+    studyState?.chapter === 'scale' ? m.studyChapterScale() :
+    studyState?.chapter === 'armor' ? m.studyChapterArmor() : ''
   );
 
   async function focusStudyControl(): Promise<void> {

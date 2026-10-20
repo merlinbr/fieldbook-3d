@@ -1,6 +1,6 @@
 # Fieldbook 3D
 
-One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection, the narrated Meet introduction, and the narrated Scale comparison are delivered locally. Start plays Meet into Scale, then restores Explore at the Armor boundary. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. Armor, World, complete chapter navigation/seeking UI, and language handoff remain tickets #3–#5.
+One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection, the narrated Meet introduction, and the narrated Scale comparison are delivered locally. Start plays Meet → Scale → Armor and ends at the World boundary. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. World and full chapter navigation remain tickets #4/#5.
 
 ## Issue #1 delivery gate — 2026-10-04
 
