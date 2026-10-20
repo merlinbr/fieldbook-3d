@@ -23,7 +23,10 @@ export function anatomyRegionMeshes(model: Object3D, id: AnatomyId): readonly Me
 
 export function anatomyRegionBounds(model: Object3D, id: AnatomyId): Box3 {
   const bounds = new Box3().makeEmpty();
-  for (const mesh of anatomyRegionMeshes(model, id)) bounds.expandByObject(mesh, true);
+  const node = model.getObjectByName(TARGETS[id].node);
+  node?.traverse((object) => {
+    if (object instanceof Mesh) bounds.expandByObject(object, true);
+  });
   return bounds;
 }
 

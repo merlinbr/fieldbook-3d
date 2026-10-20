@@ -474,6 +474,7 @@ export function createSpecimenViewer(
     updateFrustum();
     controls.update();
     camera.updateMatrixWorld();
+    studyActive = false;
     currentStudyFrame = null;
     ownCamera(true);
   }
@@ -663,6 +664,8 @@ export function createSpecimenViewer(
     observer?.disconnect();
     motionPreference?.removeEventListener('change', updateMotionPreference);
     renderer?.domElement.removeEventListener('webglcontextlost', handleContextLoss);
+    inspection?.dispose();
+    inspection = undefined;
     emphasis?.dispose();
     emphasis = undefined;
     model = undefined;

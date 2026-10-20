@@ -37,3 +37,18 @@ The development build emitted its existing warning that a client chunk exceeds 5
 
 - The requested automated checks and development build passed. A real exhibit playback/reduced-motion/paused-inspection visual smoke test was not performed as part of this Task 3 implementation; the plan assigns built-exhibit acceptance to Task 4.
 - The build's existing large-chunk and color-environment warnings remain visible, as requested.
+
+## Review fixes
+
+- Corrected `anatomyRegionBounds` to traverse the configured target node directly, excluding the supplemental armor `bodyMesh`.
+- `restoreStudy` now marks `studyActive = false` before returning control to Explore, allowing a subsequent Start cycle.
+- `dispose` now calls `inspection.dispose()` and clears its reference, in addition to disposing guided emphasis.
+
+### Review-fix verification
+
+Ran `npm run check && npm run check:anatomy && npm run check:study && npm run build -- --mode development`.
+
+- `check`: passed with `1325 FILES 0 ERRORS 0 WARNINGS 0 FILES_WITH_PROBLEMS`.
+- `check:anatomy`: passed; anatomy selection/gesture and plate-gap/body-boundary/transform/ownership assertions passed.
+- `check:study`: passed; timeline/calibrated geometry/projection/lifetime and metadata/audio/retry/cancellation assertions passed.
+- Development build: passed; static site written to `build`. Existing >500 kB chunk warning and Node `NO_COLOR`/`FORCE_COLOR` warning were emitted and not suppressed.
