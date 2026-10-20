@@ -68,3 +68,11 @@ Ran `npm run check && npm run check:study && npm run check:anatomy && npm run bu
 - `check:study`: passed; timeline, geometry, projection, lifetime, metadata, audio, retry, and cancellation assertions passed.
 - `check:anatomy`: passed; anatomy selection/gesture and plate-gap/body-boundary/transform/ownership assertions passed.
 - Development build: passed; static site written to `build`. The existing >500 kB client chunk and Node `NO_COLOR`/`FORCE_COLOR` warnings were emitted and not suppressed.
+
+## Review round 3 fixes
+
+- `restoreStudy` now hides Scale comparison graphics before restoring the Explore view.
+- Reduced-motion region selection now uses `frame.region`, so the tail-club framing is active at the exact tail-club cue boundary even when `regionProgress` is still zero.
+- The timeline harness disposes its study after endpoint assertions, removing its pagehide/visibilitychange listeners before the next case.
+
+Verification: `npm run check && npm run check:study && npm run check:anatomy && npm run build -- --mode development` all passed. `check` reported `1327 FILES 0 ERRORS 0 WARNINGS 0 FILES_WITH_PROBLEMS`; study and anatomy assertions passed. Development build wrote `build` and emitted the existing >500 kB chunk warning and Node `NO_COLOR`/`FORCE_COLOR` warning, unsuppressed.

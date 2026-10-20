@@ -278,9 +278,9 @@ export function createSpecimenViewer(
   function guidedPose(frame: Readonly<StudyFrame>): void {
     if (!controls) return;
     if (motionPreference?.matches && frame.chapter === 'armor') {
-      posePosition.copy(frame.regionProgress > 0 ? tailClubPosition : armorPosition);
-      poseTarget.copy(frame.regionProgress > 0 ? tailClubTarget : armorTarget);
-      compositionZoom = frame.regionProgress > 0 ? tailClubZoom : armorZoom;
+      posePosition.copy(frame.region === 'tailClub' ? tailClubPosition : armorPosition);
+      poseTarget.copy(frame.region === 'tailClub' ? tailClubTarget : armorTarget);
+      compositionZoom = frame.region === 'tailClub' ? tailClubZoom : armorZoom;
       return;
     }
     if (frame.chapter === 'armor') {
@@ -450,6 +450,7 @@ export function createSpecimenViewer(
   function restoreStudy(): void {
     if (!studyActive || !controls || !specimenWrapper || !comparison) return;
     cancelComposition();
+    comparison.setVisible(false);
     emphasis?.clear();
     ownCamera(false);
     specimenWrapper.position.copy(savedWrapperPosition);

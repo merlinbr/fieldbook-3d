@@ -264,6 +264,7 @@ assert.equal(timeline.snapshot.chapter, 'armor');
 timeline.audio.at(30);
 assert.equal(timeline.snapshot.phase, 'explore', 'the delivered study endpoint restores Explore at World');
 assert.equal(timeline.view.exits, 1);
+timeline.study.dispose();
 
 const staleScaleCompose = harness();
 staleScaleCompose.study.start();
