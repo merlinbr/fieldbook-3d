@@ -21,6 +21,12 @@ export function anatomyRegionMeshes(model: Object3D, id: AnatomyId): readonly Me
   return body instanceof Mesh ? [...meshes, body] : meshes;
 }
 
+export function anatomyRegionBounds(model: Object3D, id: AnatomyId): Box3 {
+  const bounds = new Box3().makeEmpty();
+  for (const mesh of anatomyRegionMeshes(model, id)) bounds.expandByObject(mesh, true);
+  return bounds;
+}
+
 export function createAnatomyInspection(model: Object3D, camera: OrthographicCamera, canvas: HTMLCanvasElement, onChange: (snapshot: InspectionSnapshot) => void): AnatomyInspection {
   const input = createAnatomyInput();
   const modelMeshes: Mesh[] = [];

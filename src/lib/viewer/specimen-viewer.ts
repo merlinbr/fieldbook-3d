@@ -24,13 +24,14 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { orthographicHalfHeight } from './camera-fit.ts';
-import { createAnatomyInspection } from './anatomy-inspection.ts';
+import { anatomyRegionBounds, createAnatomyInspection } from './anatomy-inspection.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
 import type { AnatomyId } from './anatomy-input.ts';
+import { createStudyEmphasis } from './study-emphasis.ts';
+import type { StudyEmphasis } from './study-emphasis.ts';
 import type { StudyFrame, StudyView } from './field-study.ts';
 import { createScaleComparison } from './scale-comparison.ts';
 import type { ScaleComparison, ScaleProjection } from './scale-comparison.ts';
-
 export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
 export type ViewerHandle = {
@@ -46,6 +47,8 @@ export type ViewerHandle = {
 const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 2.5;
 const ORBIT_STEP = Math.PI / 12;
+
+
 
 function disposeResources(roots: readonly Object3D[]): void {
   const geometries = new Set<BufferGeometry>();
@@ -97,7 +100,30 @@ export function createSpecimenViewer(
   let observer: ResizeObserver | undefined;
   let motionPreference: MediaQueryList | undefined;
   let inspection: AnatomyInspection | undefined;
+  let emphasis: StudyEmphasis | undefined;
+  let model: Object3D | undefined;
   let modelScenes: Object3D[] = [];
+  const scaleTarget = new Vector3();
+  const scalePosition = new Vector3();
+  const scaleDirection = new Vector3();
+  const scaleCorner = new Vector3();
+  const scaleSphere = new Sphere();
+  const armorBounds = new Box3();
+  const tailClubBounds = new Box3();
+  const armorTarget = new Vector3();
+  const armorPosition = new Vector3();
+  const tailClubTarget = new Vector3();
+  const tailClubPosition = new Vector3();
+  const posePosition = new Vector3();
+  const poseTarget = new Vector3();
+  const regionCorner = new Vector3();
+  const transitionPosition = new Vector3();
+  const transitionTarget = new Vector3();
+  const compositionPosition = new Vector3();
+  const compositionTarget = new Vector3();
+  const fitSavedPosition = new Vector3();
+  const fitSavedTarget = new Vector3();
+  let fitSavedZoom = 1;
   let specimenWrapper: Group | undefined;
   let comparison: ScaleComparison | undefined;
   let specimenMeshes: Mesh[] = [];
@@ -116,6 +142,7 @@ export function createSpecimenViewer(
   let calibrationReady = false;
   let studyActive = false;
   let studyFrame: (() => void) | null = null;
+  let currentStudyFrame: Readonly<StudyFrame> | null = null;
   const heroPosition = new Vector3();
   const heroTarget = new Vector3();
   const guidedHeroPosition = new Vector3();
@@ -129,15 +156,9 @@ export function createSpecimenViewer(
   const savedKeyTarget = new Vector3();
   const savedFillPosition = new Vector3();
   const savedFillTarget = new Vector3();
-  const scaleTarget = new Vector3();
-  const scalePosition = new Vector3();
-  const scaleDirection = new Vector3();
-  const scaleCorner = new Vector3();
-  const scaleSphere = new Sphere();
-  const transitionPosition = new Vector3();
-  const transitionTarget = new Vector3();
-  const compositionPosition = new Vector3();
-  const compositionTarget = new Vector3();
+  let armorZoom = 1;
+  let tailClubZoom = 1;
+  let compositionZoom = 1;
   let savedZoom = 1;
   let savedHorizontalRadius = 1;
   let savedVerticalRadius = 1;
@@ -187,11 +208,14 @@ export function createSpecimenViewer(
     point.sub(origin).multiplyScalar(comparison!.factor).add(origin);
   }
 
+  function smoothstep(progress: number): number {
+    const value = MathUtils.clamp(progress, 0, 1);
+    return value * value * (3 - 2 * value);
+  }
+
   function guidedBlend(frame: Readonly<StudyFrame>): number {
     if (frame.chapter !== 'scale') return 0;
-    if (motionPreference?.matches) return 1;
-    const progress = MathUtils.clamp(frame.scaleProgress, 0, 1);
-    return progress * progress * (3 - 2 * progress);
+    return motionPreference?.matches ? 1 : smoothstep(frame.scaleProgress);
   }
 
   function studyZoom(): number {
@@ -201,13 +225,91 @@ export function createSpecimenViewer(
     return heroHalfHeight / comparisonHalfHeight;
   }
 
-  function applyGuidedPose(blend: number): void {
-    if (!controls) return;
-    camera.position.lerpVectors(guidedHeroPosition, scalePosition, blend);
-    controls.target.lerpVectors(guidedHeroTarget, scaleTarget, blend);
-    camera.zoom = MathUtils.lerp(1, studyZoom(), blend);
+  function fitRegion(bounds: Box3, target: Vector3, position: Vector3): number {
+    if (!controls) throw new RangeError('Camera controls are unavailable');
+    bounds.getCenter(target);
+    const heroDistance = guidedHeroPosition.distanceTo(guidedHeroTarget);
+    position.copy(target).addScaledVector(scaleDirection, heroDistance);
+    camera.position.copy(position);
+    controls.target.copy(target);
+    camera.zoom = 1;
+    controls.update();
+    camera.updateMatrixWorld();
+    let horizontal = 0;
+    let vertical = 0;
+    for (let xIndex = 0; xIndex < 2; ++xIndex) {
+      for (let yIndex = 0; yIndex < 2; ++yIndex) {
+        for (let zIndex = 0; zIndex < 2; ++zIndex) {
+          regionCorner.set(
+            xIndex ? bounds.max.x : bounds.min.x,
+            yIndex ? bounds.max.y : bounds.min.y,
+            zIndex ? bounds.max.z : bounds.min.z
+          ).applyMatrix4(camera.matrixWorldInverse);
+          horizontal = Math.max(horizontal, Math.abs(regionCorner.x));
+          vertical = Math.max(vertical, Math.abs(regionCorner.y));
+        }
+      }
+    }
+    const aspect = width > 0 && height > 0 ? width / height : 1;
+    return orthographicHalfHeight(horizontalRadius, verticalRadius, aspect) /
+      orthographicHalfHeight(horizontal, vertical, aspect);
+  }
+
+  function calculateRegionFits(): void {
+    if (!model || !controls) throw new RangeError('Specimen model is unavailable');
+    armorBounds.copy(anatomyRegionBounds(model, 'armor'));
+    tailClubBounds.copy(anatomyRegionBounds(model, 'tailClub'));
+    if (armorBounds.isEmpty() || tailClubBounds.isEmpty()) throw new RangeError('Study region bounds are unavailable');
+    fitSavedPosition.copy(camera.position);
+    fitSavedTarget.copy(controls.target);
+    fitSavedZoom = camera.zoom;
+    armorZoom = fitRegion(armorBounds, armorTarget, armorPosition);
+    tailClubZoom = fitRegion(tailClubBounds, tailClubTarget, tailClubPosition);
+    camera.position.copy(fitSavedPosition);
+    controls.target.copy(fitSavedTarget);
+    camera.zoom = fitSavedZoom;
     controls.update();
     camera.updateProjectionMatrix();
+  }
+
+  function guidedPose(frame: Readonly<StudyFrame>): void {
+    if (!controls) return;
+    if (motionPreference?.matches && frame.chapter === 'armor') {
+      posePosition.copy(frame.regionProgress > 0 ? tailClubPosition : armorPosition);
+      poseTarget.copy(frame.regionProgress > 0 ? tailClubTarget : armorTarget);
+      compositionZoom = frame.regionProgress > 0 ? tailClubZoom : armorZoom;
+      return;
+    }
+    if (frame.chapter === 'armor') {
+      posePosition.copy(scalePosition);
+      poseTarget.copy(scaleTarget);
+      let zoom = studyZoom();
+      const armorBlend = smoothstep(frame.armorProgress);
+      posePosition.lerp(armorPosition, armorBlend);
+      poseTarget.lerp(armorTarget, armorBlend);
+      zoom = MathUtils.lerp(zoom, armorZoom, armorBlend);
+      const regionBlend = smoothstep(frame.regionProgress);
+      posePosition.lerp(tailClubPosition, regionBlend);
+      poseTarget.lerp(tailClubTarget, regionBlend);
+      compositionZoom = MathUtils.lerp(zoom, tailClubZoom, regionBlend);
+      return;
+    }
+    const scaleBlend = guidedBlend(frame);
+    posePosition.lerpVectors(guidedHeroPosition, scalePosition, scaleBlend);
+    poseTarget.lerpVectors(guidedHeroTarget, scaleTarget, scaleBlend);
+    compositionZoom = MathUtils.lerp(1, studyZoom(), scaleBlend);
+  }
+
+  function applyGuidedPose(frame: Readonly<StudyFrame>): void {
+    if (!controls) return;
+    guidedPose(frame);
+    camera.position.copy(posePosition);
+    controls.target.copy(poseTarget);
+    camera.zoom = compositionZoom;
+    controls.update();
+    camera.updateProjectionMatrix();
+    key.target.position.copy(poseTarget);
+    fill.target.position.copy(poseTarget);
   }
 
   function calculateScaleFit(): void {
@@ -309,6 +411,7 @@ export function createSpecimenViewer(
     studyActive = true;
     try {
       calculateScaleFit();
+      calculateRegionFits();
       const shadowExtent = scaleSphere.radius * 1.6;
       key.target.position.copy(scaleTarget);
       fill.target.position.copy(scaleTarget);
@@ -342,7 +445,7 @@ export function createSpecimenViewer(
   function restoreStudy(): void {
     if (!studyActive || !controls || !specimenWrapper || !comparison) return;
     cancelComposition();
-    comparison.setVisible(false);
+    emphasis?.clear();
     ownCamera(false);
     specimenWrapper.position.copy(savedWrapperPosition);
     specimenWrapper.scale.copy(savedWrapperScale);
@@ -371,7 +474,7 @@ export function createSpecimenViewer(
     updateFrustum();
     controls.update();
     camera.updateMatrixWorld();
-    studyActive = false;
+    currentStudyFrame = null;
     ownCamera(true);
   }
 
@@ -381,12 +484,15 @@ export function createSpecimenViewer(
       cancelComposition();
       if (disposed || !studyActive || !controls || !comparison) return Promise.resolve(false);
       ownCamera(false);
+      currentStudyFrame = frame;
       comparison.setVisible(frame.chapter === 'scale');
-      compositionBlend = guidedBlend(frame);
-      compositionPosition.lerpVectors(guidedHeroPosition, scalePosition, compositionBlend);
-      compositionTarget.lerpVectors(guidedHeroTarget, scaleTarget, compositionBlend);
+      if (frame.chapter === 'armor') emphasis?.apply(frame.region);
+      else emphasis?.clear();
+      guidedPose(frame);
+      compositionPosition.copy(posePosition);
+      compositionTarget.copy(poseTarget);
       if (motionPreference?.matches) {
-        applyGuidedPose(compositionBlend);
+        applyGuidedPose(frame);
         return Promise.resolve(true);
       }
       transitionPosition.copy(camera.position);
@@ -397,8 +503,11 @@ export function createSpecimenViewer(
     },
     present(frame) {
       if (disposed || !studyActive || manual || !controls || !comparison) return;
+      currentStudyFrame = frame;
       comparison.setVisible(frame.chapter === 'scale');
-      applyGuidedPose(guidedBlend(frame));
+      if (frame.chapter === 'armor') emphasis?.apply(frame.region);
+      else emphasis?.clear();
+      applyGuidedPose(frame);
     },
     freeze() {
       cancelComposition();
@@ -407,7 +516,9 @@ export function createSpecimenViewer(
     pause(frame) {
       cancelComposition();
       if (disposed || !studyActive || !comparison) return;
+      currentStudyFrame = frame;
       comparison.setVisible(frame.chapter === 'scale');
+      emphasis?.clear();
       ownCamera(true);
     },
     exit() {
@@ -447,6 +558,18 @@ export function createSpecimenViewer(
     height = nextHeight;
     renderer.setSize(width, height, false);
     updateFrustum();
+    if (studyActive) {
+      calculateRegionFits();
+      if (!manual && currentStudyFrame) {
+        guidedPose(currentStudyFrame);
+        if (composition) {
+          compositionPosition.copy(posePosition);
+          compositionTarget.copy(poseTarget);
+        } else {
+          applyGuidedPose(currentStudyFrame);
+        }
+      }
+    }
   }
 
   function updateMotionPreference(): void {
@@ -464,8 +587,9 @@ export function createSpecimenViewer(
       const eased = progress * progress * (3 - 2 * progress);
       camera.position.lerpVectors(transitionPosition, compositionPosition, eased);
       controls.target.lerpVectors(transitionTarget, compositionTarget, eased);
-      const targetZoom = MathUtils.lerp(1, studyZoom(), compositionBlend);
-      camera.zoom = MathUtils.lerp(transitionZoom, targetZoom, eased);
+      camera.zoom = MathUtils.lerp(transitionZoom, compositionZoom, eased);
+      key.target.position.copy(controls.target);
+      fill.target.position.copy(controls.target);
       camera.updateProjectionMatrix();
       if (progress === 1) {
         const resolve = composition;
@@ -539,8 +663,9 @@ export function createSpecimenViewer(
     observer?.disconnect();
     motionPreference?.removeEventListener('change', updateMotionPreference);
     renderer?.domElement.removeEventListener('webglcontextlost', handleContextLoss);
-    inspection?.dispose();
-    inspection = undefined;
+    emphasis?.dispose();
+    emphasis = undefined;
+    model = undefined;
     controls?.dispose();
     comparison?.dispose();
     comparison = undefined;
@@ -617,7 +742,8 @@ export function createSpecimenViewer(
         }
         modelScenes = gltf.scenes;
         try {
-          const model = gltf.scene;
+          model = gltf.scene;
+          emphasis = createStudyEmphasis(model);
           const wrapper = new Group();
           specimenWrapper = wrapper;
           scene.add(wrapper);
