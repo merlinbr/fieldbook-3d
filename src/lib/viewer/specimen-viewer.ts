@@ -160,6 +160,8 @@ export function createSpecimenViewer(
   let tailClubZoom = 1;
   let compositionZoom = 1;
   let savedZoom = 1;
+  let savedControlsMinZoom = MIN_ZOOM;
+  let savedControlsMaxZoom = MAX_ZOOM;
   let savedHorizontalRadius = 1;
   let savedVerticalRadius = 1;
   let savedCameraNear = 0.01;
@@ -265,6 +267,7 @@ export function createSpecimenViewer(
     fitSavedZoom = camera.zoom;
     armorZoom = fitRegion(armorBounds, armorTarget, armorPosition);
     tailClubZoom = fitRegion(tailClubBounds, tailClubTarget, tailClubPosition);
+    controls.maxZoom = Math.max(savedControlsMaxZoom, studyZoom(), armorZoom, tailClubZoom);
     camera.position.copy(fitSavedPosition);
     controls.target.copy(fitSavedTarget);
     camera.zoom = fitSavedZoom;
@@ -351,6 +354,8 @@ export function createSpecimenViewer(
     savedPosition.copy(camera.position);
     savedTarget.copy(controls.target);
     savedZoom = camera.zoom;
+    savedControlsMinZoom = controls.minZoom;
+    savedControlsMaxZoom = controls.maxZoom;
     savedHorizontalRadius = horizontalRadius;
     savedVerticalRadius = verticalRadius;
     savedCameraNear = camera.near;
@@ -468,6 +473,8 @@ export function createSpecimenViewer(
     key.shadow.normalBias = savedShadowNormalBias;
     key.shadow.bias = savedShadowBias;
     key.shadow.camera.updateProjectionMatrix();
+    controls.minZoom = savedControlsMinZoom;
+    controls.maxZoom = savedControlsMaxZoom;
     camera.position.copy(savedPosition);
     controls.target.copy(savedTarget);
     camera.zoom = savedZoom;
@@ -626,7 +633,9 @@ export function createSpecimenViewer(
 
   function zoom(factor: number): void {
     if (disposed || !manual || state !== 'ready' || !Number.isFinite(factor) || factor <= 0) return;
-    camera.zoom = MathUtils.clamp(camera.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+    const minimum = controls?.minZoom ?? MIN_ZOOM;
+    const maximum = controls?.maxZoom ?? MAX_ZOOM;
+    camera.zoom = MathUtils.clamp(camera.zoom * factor, minimum, maximum);
     camera.updateProjectionMatrix();
   }
 

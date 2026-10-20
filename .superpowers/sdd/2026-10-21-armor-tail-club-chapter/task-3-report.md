@@ -52,3 +52,19 @@ Ran `npm run check && npm run check:anatomy && npm run check:study && npm run bu
 - `check:anatomy`: passed; anatomy selection/gesture and plate-gap/body-boundary/transform/ownership assertions passed.
 - `check:study`: passed; timeline/calibrated geometry/projection/lifetime and metadata/audio/retry/cancellation assertions passed.
 - Development build: passed; static site written to `build`. Existing >500 kB chunk warning and Node `NO_COLOR`/`FORCE_COLOR` warning were emitted and not suppressed.
+
+## Review round 2: Guided zoom limits
+
+- Saved both OrbitControls zoom bounds at Study entry; region fit recomputation raises `controls.maxZoom` to the maximum of the saved exploration cap, Scale zoom, Armor zoom, and tail-club zoom. This happens after all fit ratios are computed and before any guided pose is applied, so subsequent `controls.update()` calls preserve those larger guided zoom values.
+- Resize recomputes region fits and the effective maximum for the new aspect. `restoreStudy` restores both saved bounds before restoring the saved Explore zoom and updating controls.
+- Manual `zoom()` now clamps against the active controls' min/max values, so while paused it shares the raised Study limit. Pause keeps the raised limit, avoiding a clamp jump from the guided entry framing.
+- Reasoned clamp path: Armor/club poses and the paused entry pose are set while `controls.maxZoom` covers all computed guide zooms; `applyGuidedPose` and paused `ownCamera(true)` call `controls.update()` only after this bound is active. Exit restores the exploration cap before `controls.update()`.
+
+### Review round 2 verification
+
+Ran `npm run check && npm run check:study && npm run check:anatomy && npm run build -- --mode development`.
+
+- `check`: passed with `1327 FILES 0 ERRORS 0 WARNINGS 0 FILES_WITH_PROBLEMS`.
+- `check:study`: passed; timeline, geometry, projection, lifetime, metadata, audio, retry, and cancellation assertions passed.
+- `check:anatomy`: passed; anatomy selection/gesture and plate-gap/body-boundary/transform/ownership assertions passed.
+- Development build: passed; static site written to `build`. The existing >500 kB client chunk and Node `NO_COLOR`/`FORCE_COLOR` warnings were emitted and not suppressed.
