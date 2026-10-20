@@ -1,4 +1,4 @@
-import { Color, Mesh, MeshStandardMaterial } from 'three';
+import { Color, Mesh } from 'three';
 import type { Material, Object3D } from 'three';
 import { anatomyRegionMeshes } from './anatomy-inspection.ts';
 
@@ -30,7 +30,8 @@ export function createStudyEmphasis(model: Object3D): StudyEmphasis {
     const cloneTreatment = (material: Material, color: Color, amount: number): Material => {
       const clone = material.clone();
       ownedClones.push(clone);
-      if (clone instanceof MeshStandardMaterial) clone.color.lerp(color, amount);
+      const materialColor = (clone as Material & { color?: unknown }).color;
+      if (materialColor instanceof Color) materialColor.lerp(color, amount);
       return clone;
     };
     const mapMaterials = (tint: Color, amount: number): Material | Material[] => Array.isArray(original)

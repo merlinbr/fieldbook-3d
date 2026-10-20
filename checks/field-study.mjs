@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { parseStudyVersion, validateRecordingDuration } from '../src/lib/viewer/study-data.ts';
 import { createFieldStudy, evaluateStudyFrame } from '../src/lib/viewer/field-study.ts';
-import { Box3, BoxGeometry, Color, Group, Mesh, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
+import { Box3, BoxGeometry, Color, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
 import { createScaleComparison } from '../src/lib/viewer/scale-comparison.ts';
 import { anatomyRegionMeshes } from '../src/lib/viewer/anatomy-inspection.ts';
 import { createStudyEmphasis } from '../src/lib/viewer/study-emphasis.ts';
@@ -530,7 +530,7 @@ const armorModel = new Group();
 const armorGroup = new Group();
 armorGroup.name = 'armorGroup';
 const plateA = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
-const plateB = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+const plateB = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: '#777777' }));
 armorGroup.add(plateA, plateB);
 const bodyMesh = new Mesh(
   new BoxGeometry(2, 4, 2),
@@ -542,7 +542,7 @@ const legMesh = new Mesh(new BoxGeometry(1, 1, 1), legMaterial);
 plateA.material = legMaterial;
 const headGroup = new Group();
 headGroup.name = 'headGroup';
-const headMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+const headMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: '#777777' }));
 headGroup.add(headMesh);
 const clubMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
 clubMesh.name = 'clubMesh';
