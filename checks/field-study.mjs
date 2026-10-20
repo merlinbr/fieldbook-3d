@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { parseStudyVersion, validateRecordingDuration } from '../src/lib/viewer/study-data.ts';
 import { createFieldStudy, evaluateStudyFrame } from '../src/lib/viewer/field-study.ts';
-import { Box3, BoxGeometry, Group, Mesh, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
+import { Box3, BoxGeometry, Color, Group, Mesh, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
 import { createScaleComparison } from '../src/lib/viewer/scale-comparison.ts';
+import { anatomyRegionMeshes } from '../src/lib/viewer/anatomy-inspection.ts';
+import { createStudyEmphasis } from '../src/lib/viewer/study-emphasis.ts';
 
 // In-memory boundary inputs only: not production timings or a substitute for narrated acceptance.
 const data = {
@@ -517,6 +519,93 @@ assert.equal(invalid.audio.plays.length, 0);
 invalid.study.dispose();
 await invalid.composed();
 assert.equal(invalid.snapshot.phase, 'explore');
+
+const armorModel = new Group();
+const armorGroup = new Group();
+armorGroup.name = 'armorGroup';
+const plateA = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+const plateB = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+armorGroup.add(plateA, plateB);
+const bodyMesh = new Mesh(
+  new BoxGeometry(2, 4, 2),
+  new MeshStandardMaterial({ color: '#777777' })
+);
+bodyMesh.name = 'bodyMesh';
+const legMaterial = new MeshStandardMaterial({ color: '#777777' });
+const legMesh = new Mesh(new BoxGeometry(1, 1, 1), legMaterial);
+plateA.material = legMaterial;
+const headGroup = new Group();
+headGroup.name = 'headGroup';
+const headMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+headGroup.add(headMesh);
+const clubMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+clubMesh.name = 'clubMesh';
+armorModel.add(armorGroup, bodyMesh, legMesh, headGroup, clubMesh);
+const regions = (id) => anatomyRegionMeshes(armorModel, id);
+assert.deepEqual(regions('armor'), [plateA, plateB, bodyMesh], 'armor includes plates and upper-torso body mapping');
+assert.deepEqual(regions('head'), [headMesh]);
+assert.deepEqual(regions('tailClub'), [clubMesh]);
+const unavailableArmorModel = new Group();
+const unavailableBody = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+unavailableBody.name = 'bodyMesh';
+unavailableArmorModel.add(unavailableBody);
+assert.deepEqual(anatomyRegionMeshes(unavailableArmorModel, 'armor'), [], 'body mapping requires armor plate availability');
+
+const emphasis = createStudyEmphasis(armorModel);
+const originalMaterials = new Map(
+  [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => [mesh, mesh.material])
+);
+const cloneDisposals = new Map();
+const color = (mesh) => mesh.material.color.getHexString();
+const amber = new Color('#d9a54d');
+const dim = new Color('#26241f');
+emphasis.apply('armor');
+for (const mesh of [plateA, plateB, bodyMesh]) {
+  assert.notEqual(mesh.material, originalMaterials.get(mesh));
+  assert.equal(mesh.material.color.getHex(), originalMaterials.get(mesh).color.clone().lerp(amber, 0.35).getHex(), 'armor receives modest amber emphasis');
+}
+for (const mesh of [legMesh, headMesh, clubMesh]) {
+  assert.notEqual(mesh.material, originalMaterials.get(mesh));
+  assert.equal(color(mesh), originalMaterials.get(mesh).color.clone().lerp(dim, 0.45).getHexString());
+}
+assert.equal(legMaterial.color.getHexString(), '777777', 'a specimen leg sharing its source material remains untinted');
+assert.notEqual(plateA.material, legMesh.material, 'shared source material receives per-mesh treatments');
+const armorMaterials = [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material);
+emphasis.apply('armor');
+assert.deepEqual([plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material), armorMaterials, 'reapplying the active region reuses its material clones');
+for (const material of armorMaterials) {
+  cloneDisposals.set(material, 0);
+  material.addEventListener('dispose', () => cloneDisposals.set(material, cloneDisposals.get(material) + 1));
+}
+emphasis.apply('tailClub');
+assert.notEqual(clubMesh.material, armorMaterials[5], 'tail club changes from dimmed to emphasized');
+assert.equal(clubMesh.material.color.getHexString(), originalMaterials.get(clubMesh).color.clone().lerp(amber, 0.35).getHexString());
+for (const mesh of [plateA, plateB, bodyMesh]) {
+  assert.notEqual(mesh.material, armorMaterials[[plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].indexOf(mesh)], 'former region receives dim treatment');
+  assert.equal(color(mesh), originalMaterials.get(mesh).color.clone().lerp(dim, 0.45).getHexString());
+}
+const tailMaterials = [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material);
+for (const material of tailMaterials) if (!cloneDisposals.has(material)) {
+  cloneDisposals.set(material, 0);
+  material.addEventListener('dispose', () => cloneDisposals.set(material, cloneDisposals.get(material) + 1));
+}
+emphasis.clear();
+for (const [mesh, material] of originalMaterials) assert.equal(mesh.material, material, 'clear restores exact original material reference');
+emphasis.apply('armor');
+emphasis.apply('armor');
+emphasis.clear();
+emphasis.clear();
+emphasis.apply('tailClub');
+const finalClones = [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material);
+for (const material of finalClones) if (!cloneDisposals.has(material)) {
+  cloneDisposals.set(material, 0);
+  material.addEventListener('dispose', () => cloneDisposals.set(material, cloneDisposals.get(material) + 1));
+}
+emphasis.dispose();
+emphasis.dispose();
+assert.ok([...cloneDisposals.values()].every((count) => count === 1), 'each owned clone is disposed exactly once');
+for (const [mesh, material] of originalMaterials) assert.equal(mesh.material, material);
+
 assert.equal(invalid.view.frame, null);
 const specimenWrapper = new Group();
 const specimenMesh = new Mesh(
