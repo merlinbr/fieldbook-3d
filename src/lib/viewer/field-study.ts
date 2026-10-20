@@ -1,10 +1,14 @@
 import { validateRecordingDuration } from './study-data.ts';
 import type { StudyVersion } from './study-data.ts';
 
+export type StudyFrame = { chapter: 'meet' | 'scale'; scaleProgress: number };
+
 export type StudyView = {
   begin(): boolean;
-  compose(): Promise<boolean>;
-  pause(): void;
+  compose(frame: Readonly<StudyFrame>): Promise<boolean>;
+  present(frame: Readonly<StudyFrame>): void;
+  freeze(): void;
+  pause(frame: Readonly<StudyFrame>): void;
   exit(): void;
   setFrame(callback: (() => void) | null): void;
 };
@@ -18,6 +22,7 @@ export type StudySnapshot = {
   caption: string;
   captionsEnabled: boolean;
   error: null | 'blocked' | 'media' | 'data';
+  chapter: StudyFrame['chapter'] | null;
 };
 
 export type StudyHandle = {
@@ -35,6 +40,45 @@ type StudyMedia = Pick<HTMLAudioElement,
   'play' | 'pause' | 'load' | 'removeAttribute' | 'addEventListener' | 'removeEventListener'
 >;
 
+type ScaleCue = StudyVersion['cues'][number];
+
+function findScaleCue(version: StudyVersion): ScaleCue | undefined {
+  const start = version.chapters[1].start;
+  const end = version.chapters[2].start;
+  return version.cues.find((cue) => cue.view === 'scale' && cue.start < end && cue.end > start);
+}
+
+function requireScaleCue(version: StudyVersion): ScaleCue {
+  const cue = findScaleCue(version);
+  if (!cue) throw new RangeError('The resolved recording has no Scale cue');
+  return cue;
+}
+
+function assignStudyFrame(
+  version: StudyVersion,
+  time: number,
+  out: StudyFrame,
+  scaleCue: ScaleCue
+): void {
+  const scaleStart = version.chapters[1].start;
+  const deliveredEnd = version.chapters[2].start;
+  if (!Number.isFinite(time) || time < version.chapters[0].start || time >= deliveredEnd) {
+    throw new RangeError('Study frames are available only during Meet and Scale');
+  }
+  if (time < scaleStart) {
+    out.chapter = 'meet';
+    out.scaleProgress = 0;
+    return;
+  }
+  const ramp = Math.min(0.75, scaleCue.end - scaleCue.start);
+  out.chapter = 'scale';
+  out.scaleProgress = Math.max(0, Math.min(1, (time - scaleCue.start) / ramp));
+}
+
+export function evaluateStudyFrame(version: StudyVersion, time: number, out: StudyFrame): void {
+  assignStudyFrame(version, time, out, requireScaleCue(version));
+}
+
 export function createFieldStudy(
   version: StudyVersion,
   view: StudyView,
@@ -42,10 +86,12 @@ export function createFieldStudy(
   media?: StudyMedia
 ): StudyHandle {
   const audio = media ?? new Audio();
-  const meetEnd = version.chapters[1].start;
+  const deliveredEnd = version.chapters[2].start;
+  const scaleCue = requireScaleCue(version);
+  const frame: StudyFrame = { chapter: 'meet', scaleProgress: 0 };
   const state: StudySnapshot = {
     active: false, phase: 'explore', requestedPlaying: false, time: 0,
-    duration: version.duration, caption: '', captionsEnabled: true, error: null
+    duration: version.duration, caption: '', captionsEnabled: true, error: null, chapter: null
   };
   let published: StudySnapshot | undefined;
   let disposed = false;
@@ -65,27 +111,40 @@ export function createFieldStudy(
       published.active === state.active && published.phase === state.phase &&
       published.requestedPlaying === state.requestedPlaying && published.duration === state.duration &&
       published.caption === state.caption && published.captionsEnabled === state.captionsEnabled &&
-      published.error === state.error &&
+      published.error === state.error && published.chapter === state.chapter &&
       (forceTime ? published.time === state.time : Math.floor(published.time * 10) === Math.floor(state.time * 10))
     ) return;
     published = { ...state };
     onChange(published);
   }
 
-  function readTime(): void {
+  function frameCopy(): StudyFrame {
+    return { chapter: frame.chapter, scaleProgress: frame.scaleProgress };
+  }
+
+  function readTime(): boolean {
     if (metadataReady && Number.isFinite(audio.currentTime)) {
-      state.time = Math.max(0, Math.min(audio.currentTime, meetEnd));
+      state.time = Math.max(0, Math.min(audio.currentTime, state.duration));
+    }
+    const complete = state.time >= deliveredEnd;
+    if (complete) {
+      state.chapter = null;
+    } else {
+      assignStudyFrame(version, state.time, frame, scaleCue);
+      state.chapter = frame.chapter;
     }
     state.caption = '';
-    if (!state.captionsEnabled) return;
-    for (let index = 0; index < version.captions.length; ++index) {
-      const caption = version.captions[index];
-      if (state.time < caption.start) break;
-      if (state.time < caption.end) {
-        state.caption = caption.text;
-        break;
+    if (state.captionsEnabled) {
+      for (let index = 0; index < version.captions.length; ++index) {
+        const caption = version.captions[index];
+        if (state.time < caption.start) break;
+        if (state.time < caption.end) {
+          state.caption = caption.text;
+          break;
+        }
       }
     }
+    return complete;
   }
 
   function mayAdvance(): boolean {
@@ -95,30 +154,41 @@ export function createFieldStudy(
 
   function sample(): void {
     if (state.phase !== 'playing' || !mayAdvance() || audio.paused) return;
-    readTime();
-    if (state.time >= meetEnd) exit();
-    else publish();
+    if (readTime()) {
+      exit();
+      return;
+    }
+    view.present(frame);
+    publish();
   }
 
   function fail(kind: 'blocked' | 'media' | 'data'): void {
     if (disposed || !state.active) return;
+    const wasSeeking = settlingSeek || audio.seeking;
     ++command;
     pendingPlay = null;
     composing = false;
     composed = false;
     state.requestedPlaying = false;
+    audio.pause();
+    if (!wasSeeking && readTime()) {
+      exit();
+      return;
+    }
+    settlingSeek = false;
     state.error = kind;
     state.phase = kind === 'blocked' ? 'paused' : 'error';
-    audio.pause();
-    readTime();
     if (kind === 'blocked') {
-      view.pause();
+      view.pause(frameCopy());
     } else {
-      // compose locks input and clears paused inspection synchronously, even during failure.
+      composing = true;
       const token = command;
       try {
-        void view.compose().then((success) => {
-          if (!disposed && state.active && token === command && !success) exit();
+        void view.compose(frameCopy()).then((success) => {
+          if (disposed || !state.active || token !== command) return;
+          composing = false;
+          if (!success) exit();
+          else composed = true;
         }).catch(() => {
           if (!disposed && state.active && token === command) exit();
         });
@@ -131,7 +201,7 @@ export function createFieldStudy(
 
   function attemptPlay(): void {
     if (!mayAdvance() || pendingPlay !== null) return;
-    if (state.time >= meetEnd) {
+    if (readTime()) {
       exit();
       return;
     }
@@ -175,7 +245,7 @@ export function createFieldStudy(
   function ready(): void {
     if (disposed || !state.active || state.error || !metadataReady || settlingSeek || audio.seeking || composing) return;
     if (!state.requestedPlaying) {
-      if (composed) view.pause();
+      if (composed) view.pause(frameCopy());
       composed = false;
       state.phase = 'paused';
       publish(true);
@@ -193,16 +263,20 @@ export function createFieldStudy(
     }
   }
 
-  function compose(): void {
+  function compose(target: Readonly<StudyFrame>): void {
+    const targetFrame: StudyFrame = {
+      chapter: target.chapter,
+      scaleProgress: target.scaleProgress
+    };
     const token = ++command;
     pendingPlay = null;
     composing = true;
     composed = false;
-    state.phase = settlingSeek ? 'seeking' : metadataReady ? 'restoring' : 'loading';
+    state.phase = metadataReady ? 'restoring' : 'loading';
     audio.pause();
     let result: Promise<boolean>;
     try {
-      result = view.compose();
+      result = view.compose(targetFrame);
     } catch {
       exit();
       return;
@@ -239,8 +313,22 @@ export function createFieldStudy(
     removeMediaListeners = () => {
       for (const [name, listener] of listeners) audio.removeEventListener(name, listener);
     };
+    function freezeForSeek(): void {
+      if (!metadataReady || state.error || !audio.seeking || settlingSeek) return;
+      settlingSeek = true;
+      ++command;
+      pendingPlay = null;
+      composing = false;
+      composed = false;
+      audio.pause();
+      view.freeze();
+      state.phase = 'seeking';
+      publish(true);
+    }
+
     function metadata(): void {
       if (state.error) return;
+      let positionRestored = false;
       try {
         validateRecordingDuration(version, audio.duration);
         metadataReady = true;
@@ -249,16 +337,23 @@ export function createFieldStudy(
           const target = retainedSeek;
           retainedSeek = null;
           if (Math.abs(audio.currentTime - target) > 0.001) {
+            positionRestored = true;
             audio.currentTime = target;
-            settlingSeek = audio.seeking;
           }
         }
-        readTime();
       } catch {
         fail('data');
         return;
       }
-      if (state.time >= meetEnd) exit();
+      if (audio.seeking || settlingSeek) {
+        freezeForSeek();
+        return;
+      }
+      if (readTime()) {
+        exit();
+        return;
+      }
+      if (positionRestored) compose(frameCopy());
       else ready();
       publish();
     }
@@ -288,24 +383,21 @@ export function createFieldStudy(
     }
     listen('waiting', buffering);
     listen('stalled', buffering);
-    listen('seeking', () => {
-      if (!metadataReady || state.error || !audio.seeking) return;
-      settlingSeek = true;
-      compose();
-    });
+    listen('seeking', freezeForSeek);
     listen('seeked', () => {
-      if (!metadataReady || state.error || audio.seeking) return;
+      if (!metadataReady || state.error || audio.seeking || !settlingSeek) return;
       settlingSeek = false;
-      readTime();
-      if (state.time >= meetEnd) exit();
-      else ready();
+      if (readTime()) {
+        exit();
+        return;
+      }
+      compose(frameCopy());
       publish(true);
     });
     listen('timeupdate', sample);
     listen('ended', () => {
       if (!metadataReady || state.error || !audio.ended) return;
-      readTime();
-      if (state.time >= meetEnd) exit();
+      if (readTime()) exit();
       else fail('media');
     });
     listen('error', () => fail('media'));
@@ -329,20 +421,31 @@ export function createFieldStudy(
     state.phase = 'loading';
     readTime();
     view.setFrame(sample);
-    compose();
+    compose(frameCopy());
     if (state.active) load(0);
   }
 
   function pause(): void {
     if (disposed || !state.active || state.phase === 'error') return;
+    const seeking = settlingSeek || audio.seeking;
     ++command;
     pendingPlay = null;
     composing = false;
     composed = false;
     state.requestedPlaying = false;
     audio.pause();
-    readTime();
-    view.pause();
+    if (seeking) {
+      settlingSeek = true;
+      view.freeze();
+      state.phase = 'seeking';
+      publish(true);
+      return;
+    }
+    if (readTime()) {
+      exit();
+      return;
+    }
+    view.pause(frameCopy());
     state.phase = 'paused';
     publish(true);
   }
@@ -351,9 +454,16 @@ export function createFieldStudy(
     if (disposed || !state.active || (state.error && state.error !== 'blocked') || state.requestedPlaying) return;
     state.error = null;
     state.requestedPlaying = true;
-    readTime();
-    if (state.time >= meetEnd) exit();
-    else compose();
+    if (settlingSeek || audio.seeking) {
+      state.phase = 'seeking';
+      publish(true);
+      return;
+    }
+    if (readTime()) {
+      exit();
+      return;
+    }
+    compose(frameCopy());
   }
 
   function retry(): void {
@@ -365,7 +475,7 @@ export function createFieldStudy(
     // Reset readiness before composing so synchronous media events cannot unlock the retry early.
     metadataReady = false;
     settlingSeek = false;
-    compose();
+    compose(frameCopy());
     if (state.active) load(retainedTime);
   }
 
@@ -396,13 +506,19 @@ export function createFieldStudy(
     state.time = 0;
     state.caption = '';
     state.error = null;
+    state.chapter = null;
+    frame.chapter = 'meet';
+    frame.scaleProgress = 0;
     publish(true);
   }
 
   function setCaptions(enabled: boolean): void {
     if (disposed || !state.active || state.captionsEnabled === enabled) return;
     state.captionsEnabled = enabled;
-    readTime();
+    if (readTime()) {
+      exit();
+      return;
+    }
     publish(true);
   }
 

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { parseStudyVersion, validateRecordingDuration } from '../src/lib/viewer/study-data.ts';
-import { createFieldStudy } from '../src/lib/viewer/field-study.ts';
+import { createFieldStudy, evaluateStudyFrame } from '../src/lib/viewer/field-study.ts';
+import { Box3, BoxGeometry, Group, Mesh, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
+import { createScaleComparison } from '../src/lib/viewer/scale-comparison.ts';
 
 // In-memory boundary inputs only: not production timings or a substitute for narrated acceptance.
 const data = {
@@ -74,6 +76,16 @@ validateRecordingDuration(version, 40.25);
 for (const duration of [NaN, Infinity, 0, 40.251, 39.9]) {
   assert.throws(() => validateRecordingDuration(version, duration), RangeError);
 }
+const evaluatedFrame = { chapter: 'meet', scaleProgress: -1 };
+evaluateStudyFrame(version, 9.999, evaluatedFrame);
+assert.deepEqual(evaluatedFrame, { chapter: 'meet', scaleProgress: 0 });
+evaluateStudyFrame(version, 10, evaluatedFrame);
+assert.deepEqual(evaluatedFrame, { chapter: 'scale', scaleProgress: 0 });
+evaluateStudyFrame(version, 10.375, evaluatedFrame);
+assert.equal(evaluatedFrame.scaleProgress, 0.5);
+evaluateStudyFrame(version, 19.999, evaluatedFrame);
+assert.equal(evaluatedFrame.scaleProgress, 1);
+assert.throws(() => evaluateStudyFrame(version, 20, evaluatedFrame), RangeError);
 
 function deferred() {
   let resolve;
@@ -161,6 +173,8 @@ function harness() {
       compositions.push(pending);
       return pending.promise;
     },
+    present() {},
+    freeze() { this.locked = true; },
     pause() { this.locked = false; },
     exit() { this.locked = false; this.inspection = null; ++this.exits; },
     setFrame(callback) { this.frame = callback; }
@@ -174,6 +188,89 @@ function harness() {
     async composed(index = compositions.length - 1) { compositions[index].resolve(true); await settle(); }
   };
 }
+const timeline = harness();
+timeline.study.start();
+timeline.audio.metadata();
+timeline.audio.canplay();
+await timeline.composed();
+timeline.audio.finishPlay();
+await settle();
+timeline.audio.at(9.99);
+timeline.view.frame();
+assert.equal(timeline.snapshot.phase, 'playing', 'the study remains active before the Scale boundary');
+assert.equal(timeline.snapshot.chapter, 'meet');
+timeline.audio.at(10);
+timeline.view.frame();
+assert.equal(timeline.snapshot.phase, 'playing', 'Meet continues into Scale');
+assert.equal(timeline.snapshot.chapter, 'scale', 'the exact chapter boundary selects Scale');
+assert.equal(timeline.snapshot.caption, 'Scale caption');
+timeline.study.pause();
+const compositionsBeforeSeek = timeline.compositionCount;
+timeline.audio.currentTime = 5;
+assert.equal(timeline.compositionCount, compositionsBeforeSeek, 'native seeking waits for the resolved position');
+assert.equal(timeline.snapshot.phase, 'seeking');
+timeline.audio.finishSeek();
+assert.equal(timeline.compositionCount, compositionsBeforeSeek + 1, 'settled seeking composes its final timestamp');
+await timeline.composed();
+assert.equal(timeline.snapshot.phase, 'paused');
+assert.equal(timeline.snapshot.chapter, 'meet', 'backward seek removes the Scale chapter');
+timeline.audio.currentTime = 12;
+timeline.audio.finishSeek();
+await timeline.composed();
+assert.equal(timeline.snapshot.phase, 'paused', 'a paused Scale seek remains paused');
+assert.equal(timeline.snapshot.chapter, 'scale');
+assert.equal(timeline.snapshot.caption, 'Scale caption');
+timeline.study.play();
+await timeline.composed();
+timeline.audio.finishPlay();
+await settle();
+assert.equal(timeline.snapshot.phase, 'playing', 'resume composes Scale before native playback advances');
+timeline.audio.at(19.99);
+timeline.view.frame();
+assert.equal(timeline.snapshot.chapter, 'scale');
+timeline.audio.at(20);
+assert.equal(timeline.snapshot.phase, 'explore', 'the delivered study endpoint restores Explore at Armor');
+assert.equal(timeline.view.exits, 1);
+timeline.study.dispose();
+
+const staleScaleCompose = harness();
+staleScaleCompose.study.start();
+staleScaleCompose.audio.metadata();
+staleScaleCompose.audio.canplay();
+await staleScaleCompose.composed();
+staleScaleCompose.audio.finishPlay();
+await settle();
+staleScaleCompose.study.pause();
+staleScaleCompose.audio.currentTime = 12;
+staleScaleCompose.audio.finishSeek();
+const scaleComposeIndex = staleScaleCompose.compositionCount - 1;
+staleScaleCompose.study.exit();
+await staleScaleCompose.composed(scaleComposeIndex);
+assert.equal(staleScaleCompose.snapshot.phase, 'explore', 'a delayed Scale composition cannot restore an exited study');
+assert.equal(staleScaleCompose.audio.paused, true);
+staleScaleCompose.study.dispose();
+
+const staleScalePlay = harness();
+staleScalePlay.study.start();
+staleScalePlay.audio.metadata();
+staleScalePlay.audio.canplay();
+await staleScalePlay.composed();
+staleScalePlay.audio.finishPlay();
+await settle();
+staleScalePlay.audio.at(12);
+staleScalePlay.view.frame();
+staleScalePlay.study.pause();
+staleScalePlay.study.play();
+await staleScalePlay.composed();
+const pendingScalePlay = staleScalePlay.audio.plays.length - 1;
+staleScalePlay.study.pause();
+staleScalePlay.audio.finishPlay(pendingScalePlay);
+await settle();
+assert.equal(staleScalePlay.snapshot.phase, 'paused');
+assert.equal(staleScalePlay.snapshot.chapter, 'scale');
+assert.equal(staleScalePlay.audio.paused, true, 'a delayed play cannot resume after Scale Pause');
+staleScalePlay.study.dispose();
+
 
 // Native pause can finalize its clock after the last playing/error sample.
 for (const action of ['pause', 'error']) {
@@ -234,10 +331,10 @@ for (const [target, caption] of [[2, 'Following caption'], [1.9, 'Opening captio
 const firstSeek = h.compositionCount;
 h.audio.currentTime = 2;
 h.audio.currentTime = 1.5;
+assert.equal(h.compositionCount, firstSeek, 'successive native seeking updates do not compose unsettled positions');
 h.audio.finishSeek();
+assert.equal(h.compositionCount, firstSeek + 1, 'only the final resolved native position is composed');
 await h.composed(firstSeek);
-assert.equal(h.snapshot.phase, 'seeking', 'an older reframe cannot finish a newer seek');
-await h.composed();
 assert.equal(h.snapshot.phase, 'paused');
 assert.equal(h.snapshot.time, 1.5);
 assert.equal(h.snapshot.caption, 'Opening caption');
@@ -330,7 +427,10 @@ await h.composed();
 h.audio.finishPlay();
 await settle();
 h.audio.at(10);
-assert.equal(h.snapshot.phase, 'explore', 'Meet completes at scale start, not recording end');
+assert.equal(h.snapshot.phase, 'playing', 'Scale remains active at its chapter start');
+assert.equal(h.snapshot.chapter, 'scale');
+h.audio.at(20);
+assert.equal(h.snapshot.phase, 'explore', 'the delivered endpoint is Armor start');
 assert.equal(h.view.exits, 2);
 
 h.study.start();
@@ -389,4 +489,117 @@ invalid.study.dispose();
 await invalid.composed();
 assert.equal(invalid.snapshot.phase, 'explore');
 assert.equal(invalid.view.frame, null);
+const specimenWrapper = new Group();
+const specimenMesh = new Mesh(
+  new BoxGeometry(9.05, 2.5, 3.5),
+  new MeshStandardMaterial({ color: '#777777' })
+);
+specimenMesh.position.set(2, 6.5, -2);
+specimenWrapper.add(specimenMesh);
+specimenWrapper.updateWorldMatrix(true, true);
+const sourceBounds = new Box3().setFromObject(specimenWrapper, true);
+let projection;
+let projectionCount = 0;
+const comparison = createScaleComparison(sourceBounds, [specimenMesh], (next) => {
+  projection = next;
+  ++projectionCount;
+});
+const origin = comparison.origin;
+assert.equal(origin.x, 2);
+assert.equal(origin.y, sourceBounds.min.y);
+assert.equal(origin.z, -2);
+assert.ok(Number.isFinite(comparison.factor) && comparison.factor > 0);
+const calibratedMinX = origin.x + comparison.factor * (sourceBounds.min.x - origin.x);
+const calibratedMaxX = origin.x + comparison.factor * (sourceBounds.max.x - origin.x);
+assert.ok(Math.abs(calibratedMaxX - calibratedMinX - 8) < 1e-6, 'loaded head-to-tail extent calibrates to 8 m');
+const calibratedMinY = origin.y + comparison.factor * (sourceBounds.min.y - origin.y);
+const guide = comparison.root.getObjectByName('length-guide');
+assert.ok(guide, 'generated guide is available for measured endpoint assertions');
+const guidePositions = guide.geometry.getAttribute('position');
+assert.ok(Math.abs(guidePositions.getX(0) - calibratedMinX) < 1e-6);
+assert.ok(Math.abs(guidePositions.getX(1) - calibratedMaxX) < 1e-6);
+assert.ok(Math.abs(guidePositions.getY(0) - (calibratedMinY + 0.03)) < 1e-6);
+const human = comparison.root.getObjectByName('human-reference');
+assert.ok(human, 'generated human silhouette exists');
+const humanBounds = new Box3().setFromObject(human, true);
+assert.ok(Math.abs((humanBounds.max.y - humanBounds.min.y) - 1.7) < 1e-6);
+assert.ok(Math.abs(humanBounds.min.y - calibratedMinY) < 1e-6, 'silhouette feet share the specimen ground');
+const calibratedMaxZ = origin.z + comparison.factor * (sourceBounds.max.z - origin.z);
+assert.ok(Math.abs(humanBounds.min.z - calibratedMaxZ - 0.6) < 1e-6, 'human stands 0.6 m beyond the specimen');
+assert.ok(Math.abs(guidePositions.getZ(0) - humanBounds.max.z - 0.35) < 1e-6, 'guide sits 0.35 m beyond the silhouette');
+assert.throws(() => createScaleComparison(
+  new Box3(new Vector3(1, 2, 3), new Vector3(1, 4, 5)),
+  [specimenMesh],
+  () => {}
+), RangeError, 'zero head-to-tail extent is rejected');
+
+const scene = new Scene();
+scene.add(specimenWrapper, comparison.root);
+specimenWrapper.scale.setScalar(comparison.factor);
+specimenWrapper.position.copy(origin).multiplyScalar(1 - comparison.factor);
+specimenWrapper.updateWorldMatrix(true, true);
+comparison.setVisible(true);
+const camera = new OrthographicCamera(-7, 7, 3, -3, 0.1, 100);
+const fitCenter = comparison.bounds.getCenter(new Vector3());
+camera.position.set(fitCenter.x, fitCenter.y, fitCenter.z + 25);
+camera.lookAt(fitCenter);
+camera.updateMatrixWorld(true);
+comparison.update(camera, 1400, 600);
+assert.equal(projection.visible, true);
+assert.equal(projection.length.visible, true);
+assert.equal(projection.human.visible, true);
+camera.left = -0.1;
+camera.right = 0.1;
+camera.top = 0.1;
+camera.bottom = -0.1;
+camera.updateProjectionMatrix();
+comparison.update(camera, 1400, 600);
+assert.equal(projection.length.visible, false, 'off-frustum guide anchors are hidden');
+assert.equal(projection.human.visible, false, 'off-frustum human anchors are hidden');
+camera.left = -7;
+camera.right = 7;
+camera.top = 3;
+camera.bottom = -3;
+camera.updateProjectionMatrix();
+camera.position.set(fitCenter.x, calibratedMinY + 1, fitCenter.z - 25);
+camera.lookAt(fitCenter.x, calibratedMinY + 1, fitCenter.z);
+camera.updateMatrixWorld(true);
+comparison.update(camera, 1400, 600);
+assert.equal(projection.length.visible, false, 'a nearer specimen surface hides the guide anchor');
+assert.equal(projection.human.visible, false, 'a nearer specimen surface hides the human anchor');
+const guideAnchor = new Vector3(guidePositions.getX(0), guidePositions.getY(0), guidePositions.getZ(0));
+const nearEdgeTargetY = guideAnchor.y - 2.8;
+camera.position.set(guideAnchor.x, nearEdgeTargetY, guideAnchor.z + 25);
+camera.lookAt(guideAnchor.x, nearEdgeTargetY, guideAnchor.z);
+camera.updateMatrixWorld(true);
+comparison.update(camera, 1400, 600);
+assert.equal(projection.length.visible, false, 'an anchor whose offset badge would leave the stage is hidden');
+const beforeHidden = projectionCount;
+comparison.setVisible(false);
+assert.equal(projectionCount, beforeHidden + 1, 'hiding publishes the changed projection immediately');
+assert.equal(projection.visible, false);
+assert.equal(projection.length.visible, false);
+assert.equal(projection.human.visible, false);
+
+const ownedResources = [];
+comparison.root.traverse((object) => {
+  const geometry = object.geometry;
+  if (geometry) ownedResources.push(geometry);
+  const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+  ownedResources.push(...materials);
+});
+const disposedResources = new Map();
+for (const resource of new Set(ownedResources)) {
+  disposedResources.set(resource, 0);
+  resource.addEventListener('dispose', () => disposedResources.set(resource, disposedResources.get(resource) + 1));
+}
+let specimenDisposals = 0;
+specimenMesh.geometry.addEventListener('dispose', () => ++specimenDisposals);
+specimenMesh.material.addEventListener('dispose', () => ++specimenDisposals);
+comparison.dispose();
+comparison.dispose();
+assert.equal(comparison.root.parent, null);
+assert.ok([...disposedResources.values()].every((count) => count === 1), 'owned geometry and materials dispose exactly once');
+assert.equal(specimenDisposals, 0, 'comparison cleanup never disposes specimen resources');
+console.log('Study timeline, calibrated geometry, projection, and lifetime assertions passed.');
 console.log('Study metadata boundaries, audio authority, retry, and cancellation assertions passed.');

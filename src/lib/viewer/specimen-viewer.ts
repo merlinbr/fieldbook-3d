@@ -5,6 +5,7 @@ import {
   BufferGeometry,
   Color,
   DirectionalLight,
+  Group,
   HemisphereLight,
   Material,
   MathUtils,
@@ -13,6 +14,7 @@ import {
   Object3D,
   OrthographicCamera,
   PCFShadowMap,
+  Quaternion,
   Scene,
   Sphere,
   Texture,
@@ -25,11 +27,14 @@ import { orthographicHalfHeight } from './camera-fit.ts';
 import { createAnatomyInspection } from './anatomy-inspection.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
 import type { AnatomyId } from './anatomy-input.ts';
-import type { StudyView } from './field-study.ts';
+import type { StudyFrame, StudyView } from './field-study.ts';
+import { createScaleComparison } from './scale-comparison.ts';
+import type { ScaleComparison, ScaleProjection } from './scale-comparison.ts';
 
 export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
 export type ViewerHandle = {
+  calibrationReady: boolean;
   reset(): void;
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
@@ -76,7 +81,8 @@ export function createSpecimenViewer(
   container: HTMLElement,
   modelUrl: string,
   onState: (state: ViewerState) => void,
-  onInspection: (snapshot: InspectionSnapshot) => void
+  onInspection: (snapshot: InspectionSnapshot) => void,
+  onScale: (snapshot: ScaleProjection) => void
 ): ViewerHandle {
   const scene = new Scene();
   scene.background = new Color('#22251f');
@@ -92,29 +98,67 @@ export function createSpecimenViewer(
   let motionPreference: MediaQueryList | undefined;
   let inspection: AnatomyInspection | undefined;
   let modelScenes: Object3D[] = [];
+  let specimenWrapper: Group | undefined;
+  let comparison: ScaleComparison | undefined;
+  let specimenMeshes: Mesh[] = [];
   let state: ViewerState = 'loading';
   let disposed = false;
   let radius = 1;
   let horizontalRadius = 1;
   let verticalRadius = 1;
+  let scaleHorizontalRadius = 1;
+  let scaleVerticalRadius = 1;
   let width = 0;
   let height = 0;
   let hasSize = false;
   let manual = true;
   let studyTargetsReady = false;
+  let calibrationReady = false;
   let studyActive = false;
   let studyFrame: (() => void) | null = null;
   const heroPosition = new Vector3();
   const heroTarget = new Vector3();
+  const guidedHeroPosition = new Vector3();
+  const guidedHeroTarget = new Vector3();
   const savedPosition = new Vector3();
   const savedTarget = new Vector3();
+  const savedWrapperPosition = new Vector3();
+  const savedWrapperScale = new Vector3(1, 1, 1);
+  const savedWrapperQuaternion = new Quaternion();
+  const savedKeyPosition = new Vector3();
+  const savedKeyTarget = new Vector3();
+  const savedFillPosition = new Vector3();
+  const savedFillTarget = new Vector3();
+  const scaleTarget = new Vector3();
+  const scalePosition = new Vector3();
+  const scaleDirection = new Vector3();
+  const scaleCorner = new Vector3();
+  const scaleSphere = new Sphere();
   const transitionPosition = new Vector3();
   const transitionTarget = new Vector3();
+  const compositionPosition = new Vector3();
+  const compositionTarget = new Vector3();
   let savedZoom = 1;
+  let savedHorizontalRadius = 1;
+  let savedVerticalRadius = 1;
+  let savedCameraNear = 0.01;
+  let savedCameraFar = 20;
+  let savedShadowLeft = 0;
+  let savedShadowRight = 0;
+  let savedShadowTop = 0;
+  let savedShadowBottom = 0;
+  let savedShadowNear = 0;
+  let savedShadowFar = 0;
+  let savedShadowNormalBias = 0;
+  let savedShadowBias = 0;
+  let savedHemisphereIntensity = hemisphere.intensity;
+  let savedKeyIntensity = key.intensity;
+  let savedFillIntensity = fill.intensity;
   let transitionZoom = 1;
   let transitionStart = 0;
+  let compositionBlend = 0;
   let composition: ((completed: boolean) => void) | null = null;
-
+  let handle: ViewerHandle;
   function cancelComposition(): void {
     const resolve = composition;
     composition = null;
@@ -133,36 +177,216 @@ export function createSpecimenViewer(
     controls.enabled = explore;
     controls.enableDamping = explore && !motionPreference?.matches;
     inspection?.setEnabled(explore);
-    hemisphere.intensity = explore ? 2 : 1.1;
-    key.intensity = explore ? 2.8 : 3.5;
-    fill.intensity = explore ? 0.8 : 0.35;
+    hemisphere.intensity = explore ? savedHemisphereIntensity : 1.1;
+    key.intensity = explore ? savedKeyIntensity : 3.5;
+    fill.intensity = explore ? savedFillIntensity : 0.35;
   }
 
-  function applyHero(): void {
+  function transformStudyPoint(point: Vector3): void {
+    const origin = comparison!.origin;
+    point.sub(origin).multiplyScalar(comparison!.factor).add(origin);
+  }
+
+  function guidedBlend(frame: Readonly<StudyFrame>): number {
+    if (frame.chapter !== 'scale') return 0;
+    if (motionPreference?.matches) return 1;
+    const progress = MathUtils.clamp(frame.scaleProgress, 0, 1);
+    return progress * progress * (3 - 2 * progress);
+  }
+
+  function studyZoom(): number {
+    const aspect = width > 0 && height > 0 ? width / height : 1;
+    const heroHalfHeight = orthographicHalfHeight(horizontalRadius, verticalRadius, aspect);
+    const comparisonHalfHeight = orthographicHalfHeight(scaleHorizontalRadius, scaleVerticalRadius, aspect);
+    return heroHalfHeight / comparisonHalfHeight;
+  }
+
+  function applyGuidedPose(blend: number): void {
     if (!controls) return;
-    camera.position.copy(heroPosition);
-    controls.target.copy(heroTarget);
-    camera.zoom = 1;
+    camera.position.lerpVectors(guidedHeroPosition, scalePosition, blend);
+    controls.target.lerpVectors(guidedHeroTarget, scaleTarget, blend);
+    camera.zoom = MathUtils.lerp(1, studyZoom(), blend);
     controls.update();
     camera.updateProjectionMatrix();
   }
 
-  const study: StudyView = {
-    begin() {
-      if (disposed || state !== 'ready' || !controls || !studyTargetsReady || studyActive) return false;
-      ownCamera(false);
-      savedPosition.copy(camera.position);
-      savedTarget.copy(controls.target);
-      savedZoom = camera.zoom;
-      studyActive = true;
+  function calculateScaleFit(): void {
+    if (!controls || !comparison) throw new RangeError('Scale comparison is unavailable');
+    comparison.bounds.getCenter(scaleTarget);
+    scaleDirection.copy(guidedHeroPosition).sub(guidedHeroTarget).normalize();
+    const heroDistance = guidedHeroPosition.distanceTo(guidedHeroTarget);
+    camera.position.copy(scaleTarget).addScaledVector(scaleDirection, heroDistance);
+    controls.target.copy(scaleTarget);
+    camera.zoom = 1;
+    controls.update();
+    camera.updateMatrixWorld();
+    scaleHorizontalRadius = 0;
+    scaleVerticalRadius = 0;
+    for (let xIndex = 0; xIndex < 2; ++xIndex) {
+      for (let yIndex = 0; yIndex < 2; ++yIndex) {
+        for (let zIndex = 0; zIndex < 2; ++zIndex) {
+          scaleCorner.set(
+            xIndex ? comparison.bounds.max.x : comparison.bounds.min.x,
+            yIndex ? comparison.bounds.max.y : comparison.bounds.min.y,
+            zIndex ? comparison.bounds.max.z : comparison.bounds.min.z
+          ).applyMatrix4(camera.matrixWorldInverse);
+          scaleHorizontalRadius = Math.max(scaleHorizontalRadius, Math.abs(scaleCorner.x));
+          scaleVerticalRadius = Math.max(scaleVerticalRadius, Math.abs(scaleCorner.y));
+        }
+      }
+    }
+    comparison.bounds.getBoundingSphere(scaleSphere);
+    scalePosition.copy(scaleTarget).addScaledVector(scaleDirection, Math.max(heroDistance, scaleSphere.radius * 4));
+  }
+
+  function beginStudy(): boolean {
+    if (disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
+      !studyTargetsReady || !calibrationReady || studyActive) return false;
+    savedHemisphereIntensity = hemisphere.intensity;
+    savedKeyIntensity = key.intensity;
+    savedFillIntensity = fill.intensity;
+    ownCamera(false);
+    savedPosition.copy(camera.position);
+    savedTarget.copy(controls.target);
+    savedZoom = camera.zoom;
+    savedHorizontalRadius = horizontalRadius;
+    savedVerticalRadius = verticalRadius;
+    savedCameraNear = camera.near;
+    savedCameraFar = camera.far;
+    savedWrapperPosition.copy(specimenWrapper.position);
+    savedWrapperScale.copy(specimenWrapper.scale);
+    savedWrapperQuaternion.copy(specimenWrapper.quaternion);
+    savedKeyPosition.copy(key.position);
+    savedKeyTarget.copy(key.target.position);
+    savedFillPosition.copy(fill.position);
+    savedFillTarget.copy(fill.target.position);
+    savedShadowLeft = key.shadow.camera.left;
+    savedShadowRight = key.shadow.camera.right;
+    savedShadowTop = key.shadow.camera.top;
+    savedShadowBottom = key.shadow.camera.bottom;
+    savedShadowNear = key.shadow.camera.near;
+    savedShadowFar = key.shadow.camera.far;
+    savedShadowNormalBias = key.shadow.normalBias;
+    savedShadowBias = key.shadow.bias;
+
+    const factor = comparison.factor;
+    specimenWrapper.position.copy(savedWrapperPosition).sub(comparison.origin).multiplyScalar(factor).add(comparison.origin);
+    specimenWrapper.scale.copy(savedWrapperScale).multiplyScalar(factor);
+    specimenWrapper.quaternion.copy(savedWrapperQuaternion);
+    specimenWrapper.updateWorldMatrix(true, true);
+    guidedHeroPosition.copy(heroPosition);
+    transformStudyPoint(guidedHeroPosition);
+    guidedHeroTarget.copy(heroTarget);
+    transformStudyPoint(guidedHeroTarget);
+    horizontalRadius = savedHorizontalRadius * factor;
+    verticalRadius = savedVerticalRadius * factor;
+    camera.near = savedCameraNear * factor;
+    camera.far = savedCameraFar * factor;
+    camera.position.copy(savedPosition);
+    transformStudyPoint(camera.position);
+    controls.target.copy(savedTarget);
+    transformStudyPoint(controls.target);
+    camera.zoom = savedZoom;
+    key.position.copy(savedKeyPosition);
+    transformStudyPoint(key.position);
+    key.target.position.copy(savedKeyTarget);
+    transformStudyPoint(key.target.position);
+    fill.position.copy(savedFillPosition);
+    transformStudyPoint(fill.position);
+    fill.target.position.copy(savedFillTarget);
+    transformStudyPoint(fill.target.position);
+    key.shadow.camera.left = savedShadowLeft * factor;
+    key.shadow.camera.right = savedShadowRight * factor;
+    key.shadow.camera.top = savedShadowTop * factor;
+    key.shadow.camera.bottom = savedShadowBottom * factor;
+    key.shadow.camera.near = savedShadowNear * factor;
+    key.shadow.camera.far = savedShadowFar * factor;
+    key.shadow.normalBias = savedShadowNormalBias * factor;
+    key.shadow.bias = savedShadowBias;
+    updateFrustum();
+    key.shadow.camera.updateProjectionMatrix();
+    controls.update();
+    studyActive = true;
+    try {
+      calculateScaleFit();
+      const shadowExtent = scaleSphere.radius * 1.6;
+      key.target.position.copy(scaleTarget);
+      fill.target.position.copy(scaleTarget);
+      key.shadow.camera.left = -shadowExtent;
+      key.shadow.camera.right = shadowExtent;
+      key.shadow.camera.top = shadowExtent;
+      key.shadow.camera.bottom = -shadowExtent;
+      key.shadow.camera.near = Math.max(0.01, scaleSphere.radius * 0.1);
+      key.shadow.camera.far = scaleSphere.radius * 8;
+      key.shadow.camera.updateProjectionMatrix();
+      camera.far = Math.max(camera.far, scalePosition.distanceTo(scaleTarget) + scaleSphere.radius * 2);
+
+      camera.position.copy(savedPosition);
+      transformStudyPoint(camera.position);
+      controls.target.copy(savedTarget);
+      transformStudyPoint(controls.target);
+      camera.zoom = savedZoom;
+      updateFrustum();
+      controls.update();
+      camera.updateMatrixWorld();
+      comparison.setVisible(false);
       return true;
-    },
-    compose() {
+    } catch {
+      calibrationReady = false;
+      handle.calibrationReady = false;
+      restoreStudy();
+      return false;
+    }
+  }
+
+  function restoreStudy(): void {
+    if (!studyActive || !controls || !specimenWrapper || !comparison) return;
+    cancelComposition();
+    comparison.setVisible(false);
+    ownCamera(false);
+    specimenWrapper.position.copy(savedWrapperPosition);
+    specimenWrapper.scale.copy(savedWrapperScale);
+    specimenWrapper.quaternion.copy(savedWrapperQuaternion);
+    specimenWrapper.updateWorldMatrix(true, true);
+    camera.near = savedCameraNear;
+    camera.far = savedCameraFar;
+    horizontalRadius = savedHorizontalRadius;
+    verticalRadius = savedVerticalRadius;
+    key.position.copy(savedKeyPosition);
+    key.target.position.copy(savedKeyTarget);
+    fill.position.copy(savedFillPosition);
+    fill.target.position.copy(savedFillTarget);
+    key.shadow.camera.left = savedShadowLeft;
+    key.shadow.camera.right = savedShadowRight;
+    key.shadow.camera.top = savedShadowTop;
+    key.shadow.camera.bottom = savedShadowBottom;
+    key.shadow.camera.near = savedShadowNear;
+    key.shadow.camera.far = savedShadowFar;
+    key.shadow.normalBias = savedShadowNormalBias;
+    key.shadow.bias = savedShadowBias;
+    key.shadow.camera.updateProjectionMatrix();
+    camera.position.copy(savedPosition);
+    controls.target.copy(savedTarget);
+    camera.zoom = savedZoom;
+    updateFrustum();
+    controls.update();
+    camera.updateMatrixWorld();
+    studyActive = false;
+    ownCamera(true);
+  }
+
+  const study: StudyView = {
+    begin: beginStudy,
+    compose(frame) {
       cancelComposition();
-      if (disposed || !studyActive || !controls) return Promise.resolve(false);
+      if (disposed || !studyActive || !controls || !comparison) return Promise.resolve(false);
       ownCamera(false);
+      comparison.setVisible(frame.chapter === 'scale');
+      compositionBlend = guidedBlend(frame);
+      compositionPosition.lerpVectors(guidedHeroPosition, scalePosition, compositionBlend);
+      compositionTarget.lerpVectors(guidedHeroTarget, scaleTarget, compositionBlend);
       if (motionPreference?.matches) {
-        applyHero();
+        applyGuidedPose(compositionBlend);
         return Promise.resolve(true);
       }
       transitionPosition.copy(camera.position);
@@ -171,22 +395,24 @@ export function createSpecimenViewer(
       transitionStart = performance.now();
       return new Promise<boolean>((resolve) => { composition = resolve; });
     },
-    pause() {
+    present(frame) {
+      if (disposed || !studyActive || manual || !controls || !comparison) return;
+      comparison.setVisible(frame.chapter === 'scale');
+      applyGuidedPose(guidedBlend(frame));
+    },
+    freeze() {
       cancelComposition();
-      if (!disposed && studyActive) ownCamera(true);
+      if (!disposed && studyActive) ownCamera(false);
+    },
+    pause(frame) {
+      cancelComposition();
+      if (disposed || !studyActive || !comparison) return;
+      comparison.setVisible(frame.chapter === 'scale');
+      ownCamera(true);
     },
     exit() {
-      cancelComposition();
       studyFrame = null;
-      if (disposed || !studyActive || !controls) return;
-      ownCamera(false);
-      camera.position.copy(savedPosition);
-      controls.target.copy(savedTarget);
-      camera.zoom = savedZoom;
-      controls.update();
-      updateFrustum();
-      studyActive = false;
-      ownCamera(true);
+      restoreStudy();
     },
     setFrame(callback) { studyFrame = disposed ? null : callback; }
   };
@@ -236,9 +462,10 @@ export function createSpecimenViewer(
     if (composition) {
       const progress = motionPreference?.matches ? 1 : Math.min(1, (performance.now() - transitionStart) / 350);
       const eased = progress * progress * (3 - 2 * progress);
-      camera.position.lerpVectors(transitionPosition, heroPosition, eased);
-      controls.target.lerpVectors(transitionTarget, heroTarget, eased);
-      camera.zoom = MathUtils.lerp(transitionZoom, 1, eased);
+      camera.position.lerpVectors(transitionPosition, compositionPosition, eased);
+      controls.target.lerpVectors(transitionTarget, compositionTarget, eased);
+      const targetZoom = MathUtils.lerp(1, studyZoom(), compositionBlend);
+      camera.zoom = MathUtils.lerp(transitionZoom, targetZoom, eased);
       camera.updateProjectionMatrix();
       if (progress === 1) {
         const resolve = composition;
@@ -250,6 +477,7 @@ export function createSpecimenViewer(
     if (!hasSize) return;
     camera.updateMatrixWorld();
     inspection?.update(width, height);
+    comparison?.update(camera, width, height);
     renderer.render(scene, camera);
   }
 
@@ -258,6 +486,15 @@ export function createSpecimenViewer(
     const damping = controls.enableDamping;
     controls.enableDamping = false;
     controls.update();
+    if (studyActive) {
+      camera.position.copy(scalePosition);
+      controls.target.copy(scaleTarget);
+      camera.zoom = studyZoom();
+      camera.updateProjectionMatrix();
+      controls.update();
+      controls.enableDamping = damping;
+      return;
+    }
     controls.reset();
     controls.enableDamping = damping;
   }
@@ -292,7 +529,10 @@ export function createSpecimenViewer(
 
   function dispose(): void {
     if (disposed) return;
+    if (studyActive) restoreStudy();
     disposed = true;
+    calibrationReady = false;
+    handle.calibrationReady = false;
     cancelComposition();
     studyFrame = null;
     renderer?.setAnimationLoop(null);
@@ -302,10 +542,14 @@ export function createSpecimenViewer(
     inspection?.dispose();
     inspection = undefined;
     controls?.dispose();
+    comparison?.dispose();
+    comparison = undefined;
     disposeResources([scene, ...modelScenes]);
     key.shadow.dispose();
     scene.clear();
     modelScenes = [];
+    specimenMeshes = [];
+    specimenWrapper = undefined;
     renderer?.dispose();
     renderer?.domElement.remove();
     controls = undefined;
@@ -325,7 +569,8 @@ export function createSpecimenViewer(
     fail('unavailable');
   }
 
-  const handle: ViewerHandle = {
+  handle = {
+    calibrationReady: false,
     reset, zoom, orbit, dispose, study,
     selectAnatomy(id) {
       if (!disposed && manual && state === 'ready') inspection?.select(id);
@@ -373,7 +618,10 @@ export function createSpecimenViewer(
         modelScenes = gltf.scenes;
         try {
           const model = gltf.scene;
-          scene.add(model);
+          const wrapper = new Group();
+          specimenWrapper = wrapper;
+          scene.add(wrapper);
+          wrapper.add(model);
           const bounds = new Box3().setFromObject(model, true);
           const sphere = bounds.getBoundingSphere(new Sphere());
           radius = sphere.radius;
@@ -390,6 +638,7 @@ export function createSpecimenViewer(
             if (!(object instanceof Mesh)) return;
             object.castShadow = true;
             object.receiveShadow = true;
+            specimenMeshes.push(object);
           });
 
           const size = bounds.getSize(new Vector3());
@@ -400,8 +649,21 @@ export function createSpecimenViewer(
           );
           plinth.position.set(sphere.center.x, bounds.min.y - thickness / 2, sphere.center.z);
           plinth.receiveShadow = true;
-          scene.add(plinth);
-
+          wrapper.add(plinth);
+          try {
+            comparison = createScaleComparison(bounds, specimenMeshes, onScale);
+            scene.add(comparison.root);
+            calibrationReady = true;
+            handle.calibrationReady = true;
+          } catch {
+            calibrationReady = false;
+            handle.calibrationReady = false;
+            onScale({
+              visible: false,
+              length: { visible: false, x: 0, y: 0 },
+              human: { visible: false, x: 0, y: 0 }
+            });
+          }
           key.position.copy(sphere.center).add(new Vector3(-2, 4, 3).multiplyScalar(radius));
           key.target.position.copy(sphere.center);
           key.castShadow = true;

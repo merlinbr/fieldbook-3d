@@ -5,6 +5,7 @@
   import { ANATOMY_IDS } from './anatomy-input.ts';
   import type { AnatomyId } from './anatomy-input.ts';
   import type { InspectionSnapshot } from './anatomy-inspection.ts';
+  import type { ScaleProjection } from './scale-comparison.ts';
   import type { ViewerHandle, ViewerState } from './specimen-viewer.ts';
   import { createFieldStudy } from './field-study.ts';
   import type { StudyHandle, StudySnapshot } from './field-study.ts';
@@ -28,6 +29,12 @@
   let alive = false;
   let measureGeneration = 0;
   let viewerState = $state<ViewerState>('loading');
+  let scaleReady = $state(false);
+  let scaleProjection = $state<ScaleProjection>({
+    visible: false,
+    length: { visible: false, x: 0, y: 0 },
+    human: { visible: false, x: 0, y: 0 }
+  });
   let inspection = $state<InspectionSnapshot | null>(null);
   const selected = $derived(inspection?.selected ?? null);
   const announcement = $derived(selected ? `${anatomy[selected].heading}. ${anatomy[selected].body}` : '');
@@ -44,10 +51,10 @@
   const studying = $derived(studyState?.active ?? false);
   const canInspect = $derived(!studying || studyState?.phase === 'paused');
   const targetsReady = $derived(['armor', 'tailClub'].every((id) => inspection?.regions.find((region) => region.id === id)?.available));
-  const canStart = $derived(viewerState === 'ready' && targetsReady && !!recording.version);
+  const canStart = $derived(viewerState === 'ready' && scaleReady && targetsReady && !!recording.version);
   const readiness = $derived(
     viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :
-    !targetsReady ? m.studyTargets() : recording.error === 'data' ? m.studyData() :
+    !targetsReady ? m.studyTargets() : !scaleReady ? m.studyCalibration() : recording.error === 'data' ? m.studyData() :
     !recording.version ? m.studyMissing() : m.studyReady()
   );
   const studyStatus = $derived.by(() => {
@@ -64,6 +71,10 @@
       default: return m.studyPaused();
     }
   });
+  const chapterStatus = $derived(
+    studyState?.chapter === 'meet' ? m.studyChapterMeet() :
+    studyState?.chapter === 'scale' ? m.studyChapterScale() : ''
+  );
 
   async function focusStudyControl(): Promise<void> {
     const generation = ++focusGeneration;
@@ -184,10 +195,15 @@
             inspection = null;
           }
           viewerState = nextState;
+          scaleReady = nextState === 'ready' && !!viewer?.calibrationReady;
         }, (snapshot) => {
           if (disposed) return;
           if (inspection?.selected && inspection.selected !== snapshot.selected) restoreFocus(inspection.selected, viewerState === 'ready');
           inspection = snapshot;
+        }, (snapshot) => {
+          if (disposed) return;
+          scaleProjection = snapshot;
+          if (viewerState === 'ready') scaleReady = !!viewer?.calibrationReady;
         });
         if (recording.version && viewerState !== 'error' && viewerState !== 'unavailable') {
           study = createFieldStudy(recording.version, viewer.study, receiveStudy);
@@ -235,6 +251,22 @@
           </span>
         {/if}
       {/each}
+      {#if studyState?.chapter === 'scale' && scaleProjection.visible}
+        <svg class="scale-leaders" aria-hidden="true">
+          {#if scaleProjection.length.visible}
+            <line x1={scaleProjection.length.x} y1={scaleProjection.length.y} x2={scaleProjection.length.x + 16} y2={scaleProjection.length.y - 16} />
+          {/if}
+          {#if scaleProjection.human.visible}
+            <line x1={scaleProjection.human.x} y1={scaleProjection.human.y} x2={scaleProjection.human.x + 16} y2={scaleProjection.human.y - 16} />
+          {/if}
+        </svg>
+        {#if scaleProjection.length.visible}
+          <span class="scale-marker" style:left={`${scaleProjection.length.x + 16}px`} style:top={`${scaleProjection.length.y - 16}px`} aria-hidden="true">1</span>
+        {/if}
+        {#if scaleProjection.human.visible}
+          <span class="scale-marker" style:left={`${scaleProjection.human.x + 16}px`} style:top={`${scaleProjection.human.y - 16}px`} aria-hidden="true">2</span>
+        {/if}
+      {/if}
     </div>
     {#if selected}
       {#if leader}
@@ -269,7 +301,13 @@
         <h2>{m.studyTitle()}</h2>
         <p>{m.studyEnglish()}</p>
       </div>
-      <p class="study-status" aria-live="polite" aria-atomic="true">{studyStatus}</p>
+      <p class="study-status" aria-live="polite" aria-atomic="true">{studyStatus}{chapterStatus ? ` — ${chapterStatus}` : ''}</p>
+      {#if studyState.chapter === 'scale'}
+        <div class="scale-legend" role="group" aria-label={m.studyScaleLegend()}>
+          <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen()}</p>
+          <p><span aria-hidden="true">2</span>{m.studyScaleHuman()}</p>
+        </div>
+      {/if}
       {#if studyState.captionsEnabled}
         <p class="study-caption" lang="en">{studyState.caption}</p>
       {/if}
