@@ -2,7 +2,8 @@ import { validateRecordingDuration } from './study-data.ts';
 import type { StudyVersion } from './study-data.ts';
 
 export type StudyFrame = {
-  chapter: 'meet' | 'scale' | 'armor';
+  chapter: 'meet' | 'scale' | 'armor' | 'world';
+  worldProgress: number;
   scaleProgress: number;
   armorProgress: number;
   region: 'armor' | 'tailClub';
@@ -68,18 +69,26 @@ function assignStudyFrame(
   out: StudyFrame,
   scaleCue: StudyCue,
   armorCue: StudyCue,
-  tailClubCue: StudyCue
+  tailClubCue: StudyCue,
+  worldCue: StudyCue
 ): void {
   const scaleStart = version.chapters[1].start;
   const armorStart = version.chapters[2].start;
-  const deliveredEnd = version.chapters[3].start;
+  const deliveredEnd = version.duration;
   if (!Number.isFinite(time) || time < version.chapters[0].start || time >= deliveredEnd) {
-    throw new RangeError('Study frames are available only during Meet, Scale, and Armor');
+    throw new RangeError('Study frames are available only during the recording');
   }
   out.scaleProgress = 0;
+  out.worldProgress = 0;
   out.armorProgress = 0;
   out.region = 'armor';
   out.regionProgress = 0;
+  if (time >= version.chapters[3].start) {
+    out.chapter = 'world';
+    const ramp = Math.min(0.75, worldCue.end - worldCue.start);
+    out.worldProgress = Math.max(0, Math.min(1, (time - worldCue.start) / ramp));
+    return;
+  }
   if (time < scaleStart) {
     out.chapter = 'meet';
     return;
@@ -109,7 +118,8 @@ export function evaluateStudyFrame(version: StudyVersion, time: number, out: Stu
     out,
     requireCue(version, 'scale'),
     requireCue(version, 'armor'),
-    requireCue(version, 'tailClub')
+    requireCue(version, 'tailClub'),
+    requireCue(version, 'world')
   );
 }
 
@@ -120,12 +130,13 @@ export function createFieldStudy(
   media?: StudyMedia
 ): StudyHandle {
   const audio = media ?? new Audio();
-  const deliveredEnd = version.chapters[3].start;
+  const deliveredEnd = version.duration;
   const scaleCue = requireCue(version, 'scale');
   const armorCue = requireCue(version, 'armor');
   const tailClubCue = requireCue(version, 'tailClub');
+  const worldCue = requireCue(version, 'world');
   const frame: StudyFrame = {
-    chapter: 'meet', scaleProgress: 0, armorProgress: 0, region: 'armor', regionProgress: 0
+    chapter: 'meet', worldProgress: 0, scaleProgress: 0, armorProgress: 0, region: 'armor', regionProgress: 0
   };
   const state: StudySnapshot = {
     active: false, phase: 'explore', requestedPlaying: false, time: 0,
@@ -159,6 +170,7 @@ export function createFieldStudy(
   function frameCopy(): StudyFrame {
     return {
       chapter: frame.chapter,
+      worldProgress: frame.worldProgress,
       scaleProgress: frame.scaleProgress,
       armorProgress: frame.armorProgress,
       region: frame.region,
@@ -173,7 +185,7 @@ export function createFieldStudy(
     if (complete) {
       state.chapter = null;
     } else {
-      assignStudyFrame(version, state.time, frame, scaleCue, armorCue, tailClubCue);
+      assignStudyFrame(version, state.time, frame, scaleCue, armorCue, tailClubCue, worldCue);
       state.chapter = frame.chapter;
     }
     state.caption = '';
@@ -309,6 +321,7 @@ export function createFieldStudy(
   function compose(target: Readonly<StudyFrame>): void {
     const targetFrame: StudyFrame = {
       chapter: target.chapter,
+      worldProgress: target.worldProgress,
       scaleProgress: target.scaleProgress,
       armorProgress: target.armorProgress,
       region: target.region,

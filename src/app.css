@@ -342,3 +342,10 @@ h1 {
 .study-caption { margin-top: 0.75rem; min-height: 3rem; max-width: 65ch; font-size: 1.125rem; }
 .study-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .study-controls button[aria-pressed='true'] { border-color: var(--amber); color: var(--amber); }
+
+.world-context { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2rem; margin-top: 0.75rem; padding: 0.75rem 0; border-block: 1px solid #68705c; }
+.world-context > p, .world-time { flex: 1 1 14rem; min-width: 0; }
+.world-context p { margin: 0; }
+.world-time-band { display: flex; justify-content: space-between; margin: 0.25rem 0; border-top: 0.25rem solid var(--amber); color: var(--amber); }
+.world-time-band span { border-inline-start: 1px solid var(--amber); padding-inline: 0.25rem; }
+.world-time-band span:last-child { border-inline-start: 0; border-inline-end: 1px solid var(--amber); }

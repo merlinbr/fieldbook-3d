@@ -277,6 +277,13 @@ export function createSpecimenViewer(
 
   function guidedPose(frame: Readonly<StudyFrame>): void {
     if (!controls) return;
+    if (frame.chapter === 'world') {
+      const blend = motionPreference?.matches ? 1 : smoothstep(frame.worldProgress);
+      posePosition.lerpVectors(tailClubPosition, guidedHeroPosition, blend);
+      poseTarget.lerpVectors(tailClubTarget, guidedHeroTarget, blend);
+      compositionZoom = MathUtils.lerp(tailClubZoom, 0.9, blend);
+      return;
+    }
     if (motionPreference?.matches && frame.chapter === 'armor') {
       posePosition.copy(frame.region === 'tailClub' ? tailClubPosition : armorPosition);
       poseTarget.copy(frame.region === 'tailClub' ? tailClubTarget : armorTarget);
