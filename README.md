@@ -1,6 +1,6 @@
 # Fieldbook 3D
 
-One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection, the narrated Meet introduction, and the narrated Scale comparison are delivered locally. Start plays Meet into Scale, then restores Explore at the Armor boundary. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. Armor, World, complete chapter navigation/seeking UI, and language handoff remain tickets #3–#5.
+One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Armor, head, and tail-club inspection, the narrated Meet introduction, and the narrated Scale comparison are delivered locally. Start plays Meet → Scale → Armor → World through the end of the recording. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. World returns to a wider specimen view with localized present-day North America wording and a Late Cretaceous time band marking 68–66 million years ago. Full chapter navigation remains ticket #5.
 
 ## Issue #1 delivery gate — 2026-10-04
 
@@ -10,7 +10,7 @@ The user explicitly approved the full four-section English script unchanged befo
 
 The recording intake and **real narrated Meet static-exhibit acceptance are complete locally**. [Recording documentation](docs/assets/ankylosaurus-narration.md) records the owner's audition, generation/paid-plan evidence reference, applicable ElevenLabs terms/restrictions, voluntary attribution, exact media hash, and alignment method. Billing evidence, credentials, model, and audio remain outside Git/application output; there is no runtime ElevenLabs integration.
 
-The viewer integrates native audio, composed framing, focused lighting, pause-to-inspect, resume, default captions, explicit Retry/Exit, and saved-view restoration. At that milestone only Meet played, ending at `scale.start = 13.635918367` seconds. The current build continues through Scale and ends at `armor.start = 23.666938776`. Missing complete metadata still disables Start with a localized explanation. German UI visibly labels English narration and uses matching English captions. No later chapter navigation/visuals or German recording were added; production hosting/model publication rights and physical-device testing remain separate limits.
+The viewer integrates native audio, composed framing, focused lighting, pause-to-inspect, resume, default captions, explicit Retry/Exit, and saved-view restoration. At that milestone only Meet played, ending at `scale.start = 13.635918367` seconds. The current build plays all four chapters to the recording endpoint at 51.643938 seconds. Missing complete metadata still disables Start with a localized explanation. German UI visibly labels English narration and uses matching English captions. Chapter navigation and a German recording remain undelivered; production hosting/model publication rights and physical-device testing remain separate limits.
 
 ## Run locally
 
@@ -196,6 +196,40 @@ Verification: **2026-10-20**. Development-mode static `build/` served by `vite p
 | Checks and build | `npm run check`: zero errors/warnings. `check:camera`, `check:anatomy`, and `check:study` passed. `npm run build -- --mode development` wrote the static site; the existing Three.js chunk-size and `NO_COLOR`/`FORCE_COLOR` warnings remain unsuppressed. |
 
 Limits: headless Chromium with viewport emulation, not physical devices or an actual screen-reader session. The immediate Scale failure was fault-injected with a media `error` event after the earlier real request-abort path; it exercises the controller’s retained-position Retry, not a second natural network outage. Exit was exercised during playback, paused inspection, resume composition, and resize, not during buffering or an active Retry. Layout checks used a 200% root font-size override. This milestone does not deliver Armor/World presentations, chapter picker, seek UI, German audio, production CDN hosting, or verified model publication rights.
+
+## Observed narrated armor chapter acceptance — 2026-10-21
+
+Verification: **2026-10-21**. Development-mode static build served by `npm run preview`, with the real GLB and approved MP3 served by `npm run media:dev`. Headless Chromium at 1365×768 unless noted; reduced-motion and root-text-size settings were emulated.
+
+| Scenario | Observed result |
+| --- | --- |
+| Timeline and completion | Continuous real playback showed Chapter 1 through 13.6 s, Chapter 2 from 13.6–23.7 s, and Chapter 3 from 23.7 s. Natural completion restored Explore, removed study chrome, and made Start field study available. |
+| Armor and tail-club framing | At 23.7 s the armor plates filled the frame width with calibrated camera framing. After the 31.44 s cue, the tail-club filled roughly half the frame width with the tail entering from the left. Camera travel completed within the cue ramp. |
+| Guided emphasis and pause | During playback, armor plates were amber-lit and the rest of the specimen dimmed. Pausing showed normal specimen colors and lighting, visible markers, enabled anatomy controls, retained caption, and status “Narration paused. Explore or inspect, then resume. — Chapter 3 — Built-in armor”. |
+| Paused inspection and resume | All three anatomy note controls opened notes; switching Head → Tail club replaced the note. Exit from paused inspection returned to Explore with the note removed. Resume cleared the note and restored guided armor framing/emphasis before narration advanced. |
+| Exit and restoration | Exit during Armor playback from a rotated/zoomed Explore view restored the pre-study orbit and zoom; before/after screenshots matched. |
+| Reduced motion | With `prefers-reduced-motion: reduce` emulated, the composed armor view appeared at the chapter boundary and the composed tail-club view at the cue switch, without camera travel. |
+| German and narrow layout | At 1024×768, the German route showed “Kapitel 3 — Eingebauter Panzer” and “Erzählung auf Englisch”, with English captions and no horizontal overflow. At 390×844, the chapter label was present with no horizontal overflow at 100% or with root text set to 200%. |
+| Checks and build | `npm run check`, `npm run check:camera`, `npm run check:anatomy`, `npm run check:study`, and `npm run build -- --mode development` passed. The build retains its existing large-chunk and `NO_COLOR`/`FORCE_COLOR` warnings. |
+| Repeat Start | Multiple Start runs from the same page each began at Meet; no World-chapter presentation appeared. The study ended at the World boundary back in Explore. |
+| Framing correction | Acceptance found that OrbitControls’ Explore zoom cap clamped guided region framing, initially leaving the tail-club shot framed on the whole tail. Guided framings now use the study’s own bound, and Explore bounds are restored on Exit. |
+
+Limits: headless Chromium viewport and text-size emulation, not physical-device or screen-reader testing. Exit during buffering or active Retry was not exercised. Pause exactly at the armor→tail-club cue boundary was not exercised; pause was tested inside Armor and during paused inspection. Pointer picking, nearest-hit occlusion, and keyboard/Escape focus behavior were not re-exercised during paused Armor inspection; the named Armor/Head/Tail club buttons were used, and delivered picking behavior is covered by `npm run check:anatomy` and the 2026-10-05 acceptance. Layout was observed in English at 1365×768, German at 1024×768, and English phone at 390×844 (100% and 200% root text); the full three-width × two-language × two-text-size matrix was not repeated. Dimming versus guided lighting was not isolated pixel-by-pixel; the playing/paused comparison showed the combined guided treatment and its removal. No production hosting or model publication-rights verification was performed.
+
+
+## Observed ancient-world chapter acceptance — 2026-10-21
+
+Issue #4 extends the existing study through World (39.053061224489795 s) to the recording endpoint (51.643938 s). The recording-derived World cue drives a 0.75-second pullback from the tail-club pose to the whole-animal hero composition at 0.9 zoom. Reduced motion selects that composed view immediately. The localized context graphic sits in normal document flow below the canvas: present-day North America wording, Late Cretaceous, and a 68–66 million-year time band. Scientific wording was checked against the [Natural History Museum](https://www.nhm.ac.uk/discover/dino-directory/ankylosaurus.html).
+
+Observed against the development-mode static build on loopback port 4173 and the existing real MP3/GLB on port 5194, using installed headless Chromium:
+- Continuous real native-audio playback reached World; Pause held exactly 40.027413 s while Head inspection worked. Resume held that time through the first 100 ms of composition, then advanced. Natural recording completion removed study UI and unloaded audio.
+- English and German at 1365×768, 1024×768, and 390×844, each at 100% and 200% root text size: no horizontal document overflow, context below the canvas, matching English captions, and control heights at least 44 px. Enlarged-text runs emulated reduced motion. Desktop and enlarged German phone screenshots were visually inspected; content wraps vertically without covering specimen anatomy.
+- Native-media backward seeks from World to Armor removed context; returning to World restored it. Exit removed context in every matrix case. Full-document English-to-German navigation during World removed the old presentation; no page errors occurred.
+- Keyboard Enter started playback and focused Play/Pause. Exit restored Start focus. During paused World, Armor and Tail-club inspection worked; Exit cleared the note. After a rotated/zoomed pre-study view, Exit restored the canvas pixel-for-pixel.
+- Reduced-motion World entry and resume worked with real audio. Caption choice survived resume. The existing framework-free regression now covers World boundary/progress, paused time, resume composition, and recording-end cleanup.
+- Type check: zero errors/warnings. Camera, anatomy, and study regression checks passed. Static build passed with existing large-chunk and color-environment warnings.
+
+Limits: browser viewport/text-size and reduced-motion emulation, not physical-device or screen-reader testing; no new narration audition, production-host verification, or model-rights verification. Chapter navigation and language handoff remain issues #5/#6. Temporary acceptance probes were removed; media binaries remain outside source/static output.
 
 ## Licensing and media boundary
 

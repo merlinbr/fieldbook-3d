@@ -25,9 +25,10 @@
   "studyData": "Feldstudie nicht verfügbar: Die Aufnahmekonfiguration oder die Zeitdaten sind ungültig.",
   "studyTargets": "Feldstudie nicht verfügbar: Erforderliche Ziele für Panzerung oder Schwanzkeule fehlen.",
   "studyCalibration": "Feldstudie nicht verfügbar: Das Exemplar konnte nicht für den Größenvergleich im Maßstab 8 m kalibriert werden.",
-  "studyReady": "Starte die erzählte Einführung und den Größenvergleich. Pausiere zum Erkunden und Untersuchen.",
+  "studyReady": "Starte die erzählte Feldstudie. Pausiere zum Erkunden und Untersuchen.",
   "studyChapterMeet": "Kapitel 1 — Kennenlernen",
   "studyChapterScale": "Kapitel 2 — Größenvergleich",
+  "studyChapterArmor": "Kapitel 3 — Eingebauter Panzer",
   "studyScaleLegend": "Größenvergleich",
   "studyScaleSpecimen": "Geschätzte Länge eines erwachsenen Tiers: 8 m",
   "studyScaleHuman": "Mensch als Vergleich: 1,7 m",
@@ -45,5 +46,9 @@
   "studyExit": "Zurück zum Erkunden",
   "studyRetry": "Erzählung erneut versuchen",
   "studyCaptions": "Untertitel",
-  "studyControls": "Steuerung der Feldstudie"
+  "studyControls": "Steuerung der Feldstudie",
+  "studyChapterWorld": "Kapitel 4 — Seine Welt vor langer Zeit",
+  "studyWorldLocation": "Im Gebiet des heutigen Nordamerikas",
+  "studyWorldPeriod": "Späte Kreidezeit",
+  "studyWorldAge": "Vor 68–66 Millionen Jahren"
 }

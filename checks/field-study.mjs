@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { parseStudyVersion, validateRecordingDuration } from '../src/lib/viewer/study-data.ts';
 import { createFieldStudy, evaluateStudyFrame } from '../src/lib/viewer/field-study.ts';
-import { Box3, BoxGeometry, Group, Mesh, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
+import { Box3, BoxGeometry, Color, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
 import { createScaleComparison } from '../src/lib/viewer/scale-comparison.ts';
+import { anatomyRegionMeshes } from '../src/lib/viewer/anatomy-inspection.ts';
+import { createStudyEmphasis } from '../src/lib/viewer/study-emphasis.ts';
 
 // In-memory boundary inputs only: not production timings or a substitute for narrated acceptance.
 const data = {
@@ -76,16 +78,41 @@ validateRecordingDuration(version, 40.25);
 for (const duration of [NaN, Infinity, 0, 40.251, 39.9]) {
   assert.throws(() => validateRecordingDuration(version, duration), RangeError);
 }
-const evaluatedFrame = { chapter: 'meet', scaleProgress: -1 };
+const evaluatedFrame = { chapter: 'meet', worldProgress: 0, scaleProgress: -1, armorProgress: -1, region: 'tailClub', regionProgress: -1 };
 evaluateStudyFrame(version, 9.999, evaluatedFrame);
-assert.deepEqual(evaluatedFrame, { chapter: 'meet', scaleProgress: 0 });
+assert.deepEqual(evaluatedFrame, { chapter: 'meet', worldProgress: 0, scaleProgress: 0, armorProgress: 0, region: 'armor', regionProgress: 0 });
 evaluateStudyFrame(version, 10, evaluatedFrame);
-assert.deepEqual(evaluatedFrame, { chapter: 'scale', scaleProgress: 0 });
+assert.deepEqual(evaluatedFrame, { chapter: 'scale', worldProgress: 0, scaleProgress: 0, armorProgress: 0, region: 'armor', regionProgress: 0 });
 evaluateStudyFrame(version, 10.375, evaluatedFrame);
 assert.equal(evaluatedFrame.scaleProgress, 0.5);
 evaluateStudyFrame(version, 19.999, evaluatedFrame);
 assert.equal(evaluatedFrame.scaleProgress, 1);
-assert.throws(() => evaluateStudyFrame(version, 20, evaluatedFrame), RangeError);
+assert.equal(evaluatedFrame.armorProgress, 0);
+assert.deepEqual(evaluatedFrame, { chapter: 'scale', worldProgress: 0, scaleProgress: 1, armorProgress: 0, region: 'armor', regionProgress: 0 });
+evaluateStudyFrame(version, 20, evaluatedFrame);
+assert.equal(evaluatedFrame.armorProgress, 0);
+assert.deepEqual(evaluatedFrame, { chapter: 'armor', worldProgress: 0, scaleProgress: 1, armorProgress: 0, region: 'armor', regionProgress: 0 });
+evaluateStudyFrame(version, 20.375, evaluatedFrame);
+assert.equal(evaluatedFrame.armorProgress, 0.5);
+evaluateStudyFrame(version, 20.75, evaluatedFrame);
+assert.equal(evaluatedFrame.armorProgress, 1);
+evaluateStudyFrame(version, 25, evaluatedFrame);
+assert.equal(evaluatedFrame.region, 'tailClub');
+assert.equal(evaluatedFrame.regionProgress, 0);
+evaluateStudyFrame(version, 25.375, evaluatedFrame);
+assert.equal(evaluatedFrame.regionProgress, 0.5);
+evaluateStudyFrame(version, 25.75, evaluatedFrame);
+assert.equal(evaluatedFrame.regionProgress, 1);
+evaluateStudyFrame(version, 29.999, evaluatedFrame);
+assert.deepEqual(evaluatedFrame, { chapter: 'armor', worldProgress: 0, scaleProgress: 1, armorProgress: 1, region: 'tailClub', regionProgress: 1 });
+evaluateStudyFrame(version, 30, evaluatedFrame);
+assert.equal(evaluatedFrame.chapter, 'world');
+assert.equal(evaluatedFrame.worldProgress, 0);
+evaluateStudyFrame(version, 30.375, evaluatedFrame);
+assert.equal(evaluatedFrame.worldProgress, 0.5);
+evaluateStudyFrame(version, 39.999, evaluatedFrame);
+assert.equal(evaluatedFrame.worldProgress, 1);
+assert.throws(() => evaluateStudyFrame(version, 40, evaluatedFrame), RangeError);
 
 function deferred() {
   let resolve;
@@ -161,14 +188,16 @@ globalThis.document = documentEvents;
 function harness() {
   const audio = new MediaProbe();
   const compositions = [];
+  const composedFrames = [];
   let snapshot;
   let notifications = 0;
   const view = {
     locked: false, inspection: null, frame: null, exits: 0,
     begin: () => true,
-    compose() {
+    compose(frame) {
       this.locked = true;
       this.inspection = null;
+      composedFrames.push({ ...frame });
       const pending = deferred();
       compositions.push(pending);
       return pending.promise;
@@ -184,6 +213,7 @@ function harness() {
     audio, view, study,
     get snapshot() { return snapshot; },
     get compositionCount() { return compositions.length; },
+    get composedFrames() { return composedFrames; },
     get notifications() { return notifications; },
     async composed(index = compositions.length - 1) { compositions[index].resolve(true); await settle(); }
   };
@@ -214,22 +244,44 @@ assert.equal(timeline.compositionCount, compositionsBeforeSeek + 1, 'settled see
 await timeline.composed();
 assert.equal(timeline.snapshot.phase, 'paused');
 assert.equal(timeline.snapshot.chapter, 'meet', 'backward seek removes the Scale chapter');
-timeline.audio.currentTime = 12;
+timeline.audio.currentTime = 26.5;
 timeline.audio.finishSeek();
 await timeline.composed();
-assert.equal(timeline.snapshot.phase, 'paused', 'a paused Scale seek remains paused');
-assert.equal(timeline.snapshot.chapter, 'scale');
-assert.equal(timeline.snapshot.caption, 'Scale caption');
+assert.equal(timeline.snapshot.phase, 'paused', 'a paused Armor seek remains paused');
+assert.equal(timeline.snapshot.chapter, 'armor');
+assert.deepEqual(timeline.composedFrames.at(-1), { chapter: 'armor', worldProgress: 0, scaleProgress: 1, armorProgress: 1, region: 'tailClub', regionProgress: 1 });
+timeline.audio.currentTime = 25;
+timeline.audio.finishSeek();
+await timeline.composed();
+assert.equal(timeline.snapshot.chapter, 'armor', 'backward seek within Armor keeps the chapter');
+assert.deepEqual(timeline.composedFrames.at(-1), { chapter: 'armor', worldProgress: 0, scaleProgress: 1, armorProgress: 1, region: 'tailClub', regionProgress: 0 });
+timeline.audio.currentTime = 26.5;
+timeline.audio.finishSeek();
+await timeline.composed();
+assert.deepEqual(timeline.composedFrames.at(-1), { chapter: 'armor', worldProgress: 0, scaleProgress: 1, armorProgress: 1, region: 'tailClub', regionProgress: 1 }, 'direct seek reconstructs the same Armor frame');
 timeline.study.play();
 await timeline.composed();
 timeline.audio.finishPlay();
 await settle();
 assert.equal(timeline.snapshot.phase, 'playing', 'resume composes Scale before native playback advances');
-timeline.audio.at(19.99);
+timeline.audio.at(29.99);
 timeline.view.frame();
-assert.equal(timeline.snapshot.chapter, 'scale');
-timeline.audio.at(20);
-assert.equal(timeline.snapshot.phase, 'explore', 'the delivered study endpoint restores Explore at Armor');
+assert.equal(timeline.snapshot.chapter, 'armor');
+timeline.audio.at(30);
+assert.equal(timeline.snapshot.chapter, 'world');
+assert.equal(timeline.snapshot.caption, 'World caption');
+timeline.study.pause();
+const worldTime = timeline.snapshot.time;
+timeline.view.frame();
+assert.equal(timeline.snapshot.time, worldTime);
+assert.equal(timeline.view.locked, false);
+timeline.study.play();
+assert.equal(timeline.audio.paused, true, 'world resume holds audio during composition');
+await timeline.composed();
+timeline.audio.finishPlay();
+await settle();
+timeline.audio.at(40);
+assert.equal(timeline.snapshot.phase, 'explore', 'recording completion restores Explore');
 assert.equal(timeline.view.exits, 1);
 timeline.study.dispose();
 
@@ -241,12 +293,13 @@ await staleScaleCompose.composed();
 staleScaleCompose.audio.finishPlay();
 await settle();
 staleScaleCompose.study.pause();
-staleScaleCompose.audio.currentTime = 12;
+staleScaleCompose.audio.currentTime = 26.5;
 staleScaleCompose.audio.finishSeek();
+await staleScaleCompose.composed();
 const scaleComposeIndex = staleScaleCompose.compositionCount - 1;
 staleScaleCompose.study.exit();
 await staleScaleCompose.composed(scaleComposeIndex);
-assert.equal(staleScaleCompose.snapshot.phase, 'explore', 'a delayed Scale composition cannot restore an exited study');
+assert.equal(staleScaleCompose.snapshot.phase, 'explore', 'a delayed Armor composition cannot restore an exited study');
 assert.equal(staleScaleCompose.audio.paused, true);
 staleScaleCompose.study.dispose();
 
@@ -257,7 +310,7 @@ staleScalePlay.audio.canplay();
 await staleScalePlay.composed();
 staleScalePlay.audio.finishPlay();
 await settle();
-staleScalePlay.audio.at(12);
+staleScalePlay.audio.at(26.5);
 staleScalePlay.view.frame();
 staleScalePlay.study.pause();
 staleScalePlay.study.play();
@@ -267,8 +320,8 @@ staleScalePlay.study.pause();
 staleScalePlay.audio.finishPlay(pendingScalePlay);
 await settle();
 assert.equal(staleScalePlay.snapshot.phase, 'paused');
-assert.equal(staleScalePlay.snapshot.chapter, 'scale');
-assert.equal(staleScalePlay.audio.paused, true, 'a delayed play cannot resume after Scale Pause');
+assert.equal(staleScalePlay.snapshot.chapter, 'armor');
+assert.equal(staleScalePlay.audio.paused, true, 'a delayed play cannot resume after Armor Pause');
 staleScalePlay.study.dispose();
 
 
@@ -378,8 +431,9 @@ documentEvents.visibilityState = 'hidden';
 documentEvents.dispatchEvent(new Event('visibilitychange'));
 assert.equal(h.snapshot.phase, 'paused');
 assert.equal(h.snapshot.requestedPlaying, false);
-documentEvents.visibilityState = 'visible';
-h.view.inspection = 'armor';
+h.audio.currentTime = 26.5;
+h.audio.finishSeek();
+await h.composed();
 h.audio.emit('error');
 assert.equal(h.snapshot.phase, 'error');
 assert.equal(h.snapshot.error, 'media');
@@ -430,7 +484,12 @@ h.audio.at(10);
 assert.equal(h.snapshot.phase, 'playing', 'Scale remains active at its chapter start');
 assert.equal(h.snapshot.chapter, 'scale');
 h.audio.at(20);
-assert.equal(h.snapshot.phase, 'explore', 'the delivered endpoint is Armor start');
+assert.equal(h.snapshot.phase, 'playing', 'Armor remains active at its chapter start');
+assert.equal(h.snapshot.chapter, 'armor');
+h.audio.at(30);
+assert.equal(h.snapshot.chapter, 'world');
+h.audio.at(40);
+assert.equal(h.snapshot.phase, 'explore', 'the endpoint is recording completion');
 assert.equal(h.view.exits, 2);
 
 h.study.start();
@@ -488,6 +547,93 @@ assert.equal(invalid.audio.plays.length, 0);
 invalid.study.dispose();
 await invalid.composed();
 assert.equal(invalid.snapshot.phase, 'explore');
+
+const armorModel = new Group();
+const armorGroup = new Group();
+armorGroup.name = 'armorGroup';
+const plateA = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+const plateB = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: '#777777' }));
+armorGroup.add(plateA, plateB);
+const bodyMesh = new Mesh(
+  new BoxGeometry(2, 4, 2),
+  new MeshStandardMaterial({ color: '#777777' })
+);
+bodyMesh.name = 'bodyMesh';
+const legMaterial = new MeshStandardMaterial({ color: '#777777' });
+const legMesh = new Mesh(new BoxGeometry(1, 1, 1), legMaterial);
+plateA.material = legMaterial;
+const headGroup = new Group();
+headGroup.name = 'headGroup';
+const headMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: '#777777' }));
+headGroup.add(headMesh);
+const clubMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
+clubMesh.name = 'clubMesh';
+armorModel.add(armorGroup, bodyMesh, legMesh, headGroup, clubMesh);
+const regions = (id) => anatomyRegionMeshes(armorModel, id);
+assert.deepEqual(regions('armor'), [plateA, plateB, bodyMesh], 'armor includes plates and upper-torso body mapping');
+assert.deepEqual(regions('head'), [headMesh]);
+assert.deepEqual(regions('tailClub'), [clubMesh]);
+const unavailableArmorModel = new Group();
+const unavailableBody = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+unavailableBody.name = 'bodyMesh';
+unavailableArmorModel.add(unavailableBody);
+assert.deepEqual(anatomyRegionMeshes(unavailableArmorModel, 'armor'), [], 'body mapping requires armor plate availability');
+
+const emphasis = createStudyEmphasis(armorModel);
+const originalMaterials = new Map(
+  [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => [mesh, mesh.material])
+);
+const cloneDisposals = new Map();
+const color = (mesh) => mesh.material.color.getHexString();
+const amber = new Color('#d9a54d');
+const dim = new Color('#26241f');
+emphasis.apply('armor');
+for (const mesh of [plateA, plateB, bodyMesh]) {
+  assert.notEqual(mesh.material, originalMaterials.get(mesh));
+  assert.equal(mesh.material.color.getHex(), originalMaterials.get(mesh).color.clone().lerp(amber, 0.35).getHex(), 'armor receives modest amber emphasis');
+}
+for (const mesh of [legMesh, headMesh, clubMesh]) {
+  assert.notEqual(mesh.material, originalMaterials.get(mesh));
+  assert.equal(color(mesh), originalMaterials.get(mesh).color.clone().lerp(dim, 0.45).getHexString());
+}
+assert.equal(legMaterial.color.getHexString(), '777777', 'a specimen leg sharing its source material remains untinted');
+assert.notEqual(plateA.material, legMesh.material, 'shared source material receives per-mesh treatments');
+const armorMaterials = [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material);
+emphasis.apply('armor');
+assert.deepEqual([plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material), armorMaterials, 'reapplying the active region reuses its material clones');
+for (const material of armorMaterials) {
+  cloneDisposals.set(material, 0);
+  material.addEventListener('dispose', () => cloneDisposals.set(material, cloneDisposals.get(material) + 1));
+}
+emphasis.apply('tailClub');
+assert.notEqual(clubMesh.material, armorMaterials[5], 'tail club changes from dimmed to emphasized');
+assert.equal(clubMesh.material.color.getHexString(), originalMaterials.get(clubMesh).color.clone().lerp(amber, 0.35).getHexString());
+for (const mesh of [plateA, plateB, bodyMesh]) {
+  assert.notEqual(mesh.material, armorMaterials[[plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].indexOf(mesh)], 'former region receives dim treatment');
+  assert.equal(color(mesh), originalMaterials.get(mesh).color.clone().lerp(dim, 0.45).getHexString());
+}
+const tailMaterials = [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material);
+for (const material of tailMaterials) if (!cloneDisposals.has(material)) {
+  cloneDisposals.set(material, 0);
+  material.addEventListener('dispose', () => cloneDisposals.set(material, cloneDisposals.get(material) + 1));
+}
+emphasis.clear();
+for (const [mesh, material] of originalMaterials) assert.equal(mesh.material, material, 'clear restores exact original material reference');
+emphasis.apply('armor');
+emphasis.apply('armor');
+emphasis.clear();
+emphasis.clear();
+emphasis.apply('tailClub');
+const finalClones = [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => mesh.material);
+for (const material of finalClones) if (!cloneDisposals.has(material)) {
+  cloneDisposals.set(material, 0);
+  material.addEventListener('dispose', () => cloneDisposals.set(material, cloneDisposals.get(material) + 1));
+}
+emphasis.dispose();
+emphasis.dispose();
+assert.ok([...cloneDisposals.values()].every((count) => count === 1), 'each owned clone is disposed exactly once');
+for (const [mesh, material] of originalMaterials) assert.equal(mesh.material, material);
+
 assert.equal(invalid.view.frame, null);
 const specimenWrapper = new Group();
 const specimenMesh = new Mesh(

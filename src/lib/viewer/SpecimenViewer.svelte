@@ -73,7 +73,9 @@
   });
   const chapterStatus = $derived(
     studyState?.chapter === 'meet' ? m.studyChapterMeet() :
-    studyState?.chapter === 'scale' ? m.studyChapterScale() : ''
+    studyState?.chapter === 'scale' ? m.studyChapterScale() :
+    studyState?.chapter === 'armor' ? m.studyChapterArmor() :
+    studyState?.chapter === 'world' ? m.studyChapterWorld() : ''
   );
 
   async function focusStudyControl(): Promise<void> {
@@ -306,6 +308,16 @@
         <div class="scale-legend" role="group" aria-label={m.studyScaleLegend()}>
           <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen()}</p>
           <p><span aria-hidden="true">2</span>{m.studyScaleHuman()}</p>
+        </div>
+      {/if}
+      {#if studyState.chapter === 'world'}
+        <div class="world-context" role="group" aria-label={m.studyChapterWorld()}>
+          <p>{m.studyWorldLocation()}</p>
+          <div class="world-time">
+            <p>{m.studyWorldPeriod()}</p>
+            <div class="world-time-band" aria-hidden="true"><span>68</span><span>66</span></div>
+            <p>{m.studyWorldAge()}</p>
+          </div>
         </div>
       {/if}
       {#if studyState.captionsEnabled}

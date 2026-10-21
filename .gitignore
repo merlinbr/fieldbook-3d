@@ -24,3 +24,4 @@ media-dev/
 *.woff
 *.woff2
 example project/
+.superpowers/

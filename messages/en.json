@@ -25,9 +25,10 @@
   "studyData": "Field study unavailable: the recording configuration or timing data is invalid.",
   "studyTargets": "Field study unavailable: required armor or tail-club targets are missing.",
   "studyCalibration": "Field study unavailable: the specimen could not be calibrated for the 8 m scale comparison.",
-  "studyReady": "Start the narrated introduction and scale comparison. Pause to explore and inspect.",
+  "studyReady": "Start the narrated field study. Pause to explore and inspect.",
   "studyChapterMeet": "Chapter 1 — Meet",
   "studyChapterScale": "Chapter 2 — Scale",
+  "studyChapterArmor": "Chapter 3 — Built-in armor",
   "studyScaleLegend": "Scale comparison",
   "studyScaleSpecimen": "Estimated adult length: 8 m",
   "studyScaleHuman": "Human reference: 1.7 m",
@@ -45,5 +46,9 @@
   "studyExit": "Exit to Explore",
   "studyRetry": "Retry narration",
   "studyCaptions": "Captions",
-  "studyControls": "Field study controls"
+  "studyControls": "Field study controls",
+  "studyChapterWorld": "Chapter 4 — Its ancient world",
+  "studyWorldLocation": "What is now North America",
+  "studyWorldPeriod": "Late Cretaceous",
+  "studyWorldAge": "68–66 million years ago"
 }

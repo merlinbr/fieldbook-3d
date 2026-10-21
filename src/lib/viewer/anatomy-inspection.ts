@@ -12,6 +12,24 @@ const TARGETS = {
   tailClub: { node: 'clubMesh', anchor: [0, 0, 0.56] }
 } as const;
 
+export function anatomyRegionMeshes(model: Object3D, id: AnatomyId): readonly Mesh[] {
+  const node = model.getObjectByName(TARGETS[id].node);
+  const meshes: Mesh[] = [];
+  node?.traverse((object) => { if (object instanceof Mesh) meshes.push(object); });
+  if (id !== 'armor' || meshes.length === 0) return meshes;
+  const body = model.getObjectByName('bodyMesh');
+  return body instanceof Mesh ? [...meshes, body] : meshes;
+}
+
+export function anatomyRegionBounds(model: Object3D, id: AnatomyId): Box3 {
+  const bounds = new Box3().makeEmpty();
+  const node = model.getObjectByName(TARGETS[id].node);
+  node?.traverse((object) => {
+    if (object instanceof Mesh) bounds.expandByObject(object, true);
+  });
+  return bounds;
+}
+
 export function createAnatomyInspection(model: Object3D, camera: OrthographicCamera, canvas: HTMLCanvasElement, onChange: (snapshot: InspectionSnapshot) => void): AnatomyInspection {
   const input = createAnatomyInput();
   const modelMeshes: Mesh[] = [];
@@ -20,10 +38,10 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
   model.traverse((object) => { if (object instanceof Mesh) modelMeshes.push(object); });
   const targets = ANATOMY_IDS.map((id) => {
     const node = model.getObjectByName(TARGETS[id].node);
-    const meshes: Mesh[] = [];
-    node?.traverse((object) => {
-      if (object instanceof Mesh) { meshes.push(object); meshRegion.set(object, id); }
-    });
+    const regionMeshes = anatomyRegionMeshes(model, id);
+    // Inspection continues highlighting only the delivered plates, not torso skin.
+    const meshes = id === 'armor' ? regionMeshes.filter((mesh) => mesh !== model.getObjectByName('bodyMesh')) : [...regionMeshes];
+    meshes.forEach((mesh) => meshRegion.set(mesh, id));
     return { id, node, meshes, local: new Vector3(...TARGETS[id].anchor), world: new Vector3(), matrix: new Matrix4(), available: meshes.length > 0 };
   });
   // The delivered armor is separate plates over a continuous upper torso.
