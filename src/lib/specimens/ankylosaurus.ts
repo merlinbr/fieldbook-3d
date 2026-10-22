@@ -1,6 +1,6 @@
-import { PUBLIC_ANKYLOSAURUS_MODEL_URL, PUBLIC_ANKYLOSAURUS_STUDY_VERSION } from '$app/env/public';
+import { PUBLIC_ANKYLOSAURUS_MODEL_URL, PUBLIC_ANKYLOSAURUS_STUDY_VERSION, PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE } from '$app/env/public';
 import type { AnatomyId } from '../viewer/anatomy-input.ts';
-import { parseStudyVersion } from '../viewer/study-data.ts';
+import { resolveStudyVersion } from '../viewer/study-data.ts';
 
 export type AnatomyNote = { label: string; heading: string; body: string };
 export type AnatomyText = Record<AnatomyId, AnatomyNote>;
@@ -34,11 +34,17 @@ function modelUrl(): string {
   return url.href;
 }
 
+const study = {
+  en: resolveStudyVersion('en', PUBLIC_ANKYLOSAURUS_STUDY_VERSION, PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE),
+  de: resolveStudyVersion('de', PUBLIC_ANKYLOSAURUS_STUDY_VERSION, PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE)
+};
+
 export const ankylosaurus = {
   id: 'ankylosaurus',
   scientificName: 'Ankylosaurus magniventris',
   modelUrl: modelUrl(),
-  study: parseStudyVersion(PUBLIC_ANKYLOSAURUS_STUDY_VERSION)
+  study,
+  versions: Object.values(study).map((recording) => recording.version).filter((version) => version !== null)
 } as const;
 
 export const ankylosaurusText = {

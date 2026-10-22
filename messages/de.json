@@ -55,5 +55,9 @@
   "studySeekValue": "{time} von {duration}",
   "studyChapters": "Kapitel der Feldstudie",
   "studyPrevious": "Vorheriges Kapitel",
-  "studyNext": "Nächstes Kapitel"
+  "studyNext": "Nächstes Kapitel",
+  "studyGerman": "Erzählung auf Deutsch",
+  "studyLeaving": "Erzählung gestoppt. Sprache wird gewechselt… Falls der Wechsel unterbrochen wird, kehre zum Erkunden zurück.",
+  "studyHandoffLoading": "Deine pausierte Studie wird vorbereitet…",
+  "studyHandoffInvalid": "Dieser Studienlink konnte nicht wiederhergestellt werden. Du kannst das Tier erkunden oder eine neue Studie starten."
 }

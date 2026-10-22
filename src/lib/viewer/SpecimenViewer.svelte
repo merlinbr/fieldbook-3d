@@ -10,11 +10,14 @@
   import { createFieldStudy } from './field-study.ts';
   import type { StudyHandle, StudySnapshot } from './field-study.ts';
   import type { StudyVersion } from './study-data.ts';
+  import { encodeStudyHandoff, parseStudyHandoff, STUDY_QUERY } from './study-handoff.ts';
+  import type { StudyHandoff } from './study-handoff.ts';
 
-  let { modelUrl, anatomy, recording }: {
+  let { modelUrl, anatomy, recording, versions }: {
     modelUrl: string;
     anatomy: AnatomyText;
     recording: { version: StudyVersion | null; error: 'missing' | 'data' | null };
+    versions: readonly StudyVersion[];
   } = $props();
   const id = $props.id();
   const instructionsId = `${id}-instructions`;
@@ -48,14 +51,18 @@
   let studyPanel = $state<HTMLDivElement>();
   let exploreControls: HTMLDivElement | undefined;
   let focusGeneration = 0;
+  let incoming = $state<StudyHandoff | null>(null);
+  let handoffFailed = $state(false);
   const studying = $derived(studyState?.active ?? false);
+  const leaving = $derived(studyState?.phase === 'leaving');
+  const narrationLanguage = $derived(recording.version?.language === 'de' ? m.studyGerman() : m.studyEnglish());
   const canInspect = $derived(!studying || studyState?.phase === 'paused');
   const targetsReady = $derived(['armor', 'tailClub'].every((id) => inspection?.regions.find((region) => region.id === id)?.available));
   const canStart = $derived(viewerState === 'ready' && scaleReady && targetsReady && !!recording.version);
   const readiness = $derived(
     viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :
     !targetsReady ? m.studyTargets() : !scaleReady ? m.studyCalibration() : recording.error === 'data' ? m.studyData() :
-    !recording.version ? m.studyMissing() : m.studyReady()
+    !recording.version ? m.studyMissing() : incoming ? m.studyHandoffLoading() : handoffFailed ? m.studyHandoffInvalid() : m.studyReady()
   );
   const studyStatus = $derived.by(() => {
     if (!studyState?.active) return '';
@@ -63,6 +70,7 @@
     if (studyState.error === 'media') return m.studyMediaError();
     if (studyState.error === 'data') return m.studyTimingError();
     switch (studyState.phase) {
+      case 'leaving': return m.studyLeaving();
       case 'loading': return m.studyLoading();
       case 'restoring': return m.studyRestoring();
       case 'playing': return m.studyPlaying();
@@ -97,9 +105,38 @@
   }
   function startStudy(): void {
     if (!canStart || !study) return;
+    incoming = null;
+    handoffFailed = false;
     study.start();
     void focusStudyControl();
   }
+
+  export function prepareLanguageLink(link: HTMLAnchorElement): void {
+    const destination = new URL(link.href);
+    destination.searchParams.delete(STUDY_QUERY);
+    if (studyState?.active && recording.version) {
+      const view = viewer?.savedExploration();
+      const position = study?.transfer();
+      if (view && position) destination.searchParams.set(STUDY_QUERY, encodeStudyHandoff({
+        specimen: 'ankylosaurus', version: recording.version.id, ...position, view
+      }));
+    }
+    link.href = destination.href;
+  }
+
+  $effect(() => {
+    if (!incoming) return;
+    if (viewerState === 'error' || viewerState === 'unavailable') {
+      incoming = null;
+      handoffFailed = true;
+      return;
+    }
+    if (!canStart || !viewer || !study) return;
+    const context = incoming;
+    incoming = null;
+    if (viewer.restoreExploration(context.view) && study.restore(context)) void focusStudyControl();
+    else handoffFailed = true;
+  });
   function togglePlayback(): void {
     if (studyState?.requestedPlaying) study?.pause();
     else {
@@ -183,6 +220,15 @@
 
   onMount(() => {
     alive = true;
+    const url = new URL(window.location.href);
+    const contexts = url.searchParams.getAll(STUDY_QUERY);
+    if (contexts.length) {
+      incoming = contexts.length === 1 && recording.version
+        ? parseStudyHandoff(contexts[0], versions, recording.version) : null;
+      handoffFailed = !incoming;
+      url.searchParams.delete(STUDY_QUERY);
+      window.history.replaceState(window.history.state, '', url);
+    }
     let disposed = false;
     observer = new ResizeObserver(measure);
     if (container) observer.observe(container);
@@ -311,7 +357,7 @@
     <div class="study-ui" bind:this={studyPanel}>
       <div class="study-heading">
         <h2>{m.studyTitle()}</h2>
-        <p>{m.studyEnglish()}</p>
+        <p>{narrationLanguage}</p>
       </div>
       <p class="study-status" aria-live="polite" aria-atomic="true">{studyStatus}{chapterStatus ? ` — ${chapterStatus}` : ''}</p>
       {#if studyState.chapter === 'scale'}
@@ -331,16 +377,16 @@
         </div>
       {/if}
       {#if studyState.captionsEnabled}
-        <p class="study-caption" lang="en">{studyState.caption}</p>
+        <p class="study-caption" lang={recording.version?.language}>{studyState.caption}</p>
       {/if}
       <div class="study-controls" role="group" aria-label={m.studyControls()}>
-        <button type="button" bind:this={playButton} onclick={togglePlayback} disabled={studyState.phase === 'error'}>
+        <button type="button" bind:this={playButton} onclick={togglePlayback} disabled={studyState.phase === 'error' || leaving}>
           {studyState.requestedPlaying ? m.studyPause() : m.studyPlay()}
         </button>
         {#if studyState.phase === 'error'}
           <button type="button" bind:this={retryButton} onclick={retryStudy}>{m.studyRetry()}</button>
         {/if}
-        <button type="button" aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
+        <button type="button" disabled={leaving} aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
         <button type="button" onclick={() => study?.exit()}>{m.studyExit()}</button>
       </div>
       <div class="study-timeline">
@@ -348,18 +394,18 @@
         <span class="study-time">{clock(studyState.time)} / {clock(studyState.duration)}</span>
         <input id={`${id}-study-seek`} type="range" min="0" max={studyState.duration} step="any"
           value={studyState.time} aria-valuetext={m.studySeekValue({ time: clock(studyState.time), duration: clock(studyState.duration) })}
-          disabled={!!studyState.error} oninput={(event) => study?.seek(event.currentTarget.valueAsNumber)} />
+          disabled={!!studyState.error || leaving} oninput={(event) => study?.seek(event.currentTarget.valueAsNumber)} />
       </div>
       <div class="study-chapters" role="group" aria-label={m.studyChapters()}>
         {#each chapters as chapter}
           <button type="button" aria-current={studyState.chapter === chapter.id ? 'step' : undefined}
-            disabled={!!studyState.error} onclick={() => study?.seek(chapter.start)}>{chapterLabels[chapter.id]}</button>
+            disabled={!!studyState.error || leaving} onclick={() => study?.seek(chapter.start)}>{chapterLabels[chapter.id]}</button>
         {/each}
       </div>
       <div class="study-controls">
-        <button type="button" disabled={!!studyState.error || chapterIndex <= 0}
+        <button type="button" disabled={!!studyState.error || leaving || chapterIndex <= 0}
           onclick={() => study?.moveChapter(-1)}>{m.studyPrevious()}</button>
-        <button type="button" disabled={!!studyState.error || chapterIndex < 0 || chapterIndex >= chapters.length - 1}
+        <button type="button" disabled={!!studyState.error || leaving || chapterIndex < 0 || chapterIndex >= chapters.length - 1}
           onclick={() => study?.moveChapter(1)}>{m.studyNext()}</button>
       </div>
     </div>
@@ -367,7 +413,7 @@
     <div class="study-entry">
       <button type="button" bind:this={startButton} disabled={!canStart} aria-describedby={`${id}-study-readiness`} onclick={startStudy}>{m.startStudy()}</button>
       <p id={`${id}-study-readiness`} aria-live="polite" aria-atomic="true">{readiness}</p>
-      {#if recording.version}<p>{m.studyEnglish()}</p>{/if}
+      {#if recording.version}<p>{narrationLanguage}</p>{/if}
     </div>
   {/if}
   <div bind:this={exploreControls}>

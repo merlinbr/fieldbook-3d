@@ -24,6 +24,8 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { orthographicHalfHeight } from './camera-fit.ts';
+import { validExplorationView } from './study-handoff.ts';
+import type { ExplorationView } from './study-handoff.ts';
 import { anatomyRegionBounds, createAnatomyInspection } from './anatomy-inspection.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
 import type { AnatomyId } from './anatomy-input.ts';
@@ -40,6 +42,8 @@ export type ViewerHandle = {
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
   selectAnatomy(id: AnatomyId | null): void;
+  savedExploration(): ExplorationView | null;
+  restoreExploration(view: ExplorationView): boolean;
   study: StudyView;
   dispose(): void;
 };
@@ -722,6 +726,34 @@ export function createSpecimenViewer(
   handle = {
     calibrationReady: false,
     reset, zoom, orbit, dispose, study,
+    savedExploration() {
+      if (disposed || state !== 'ready' || !studyActive) return null;
+      const offset = savedPosition.clone().sub(savedTarget);
+      return {
+        azimuth: Math.atan2(offset.x, offset.z),
+        polar: MathUtils.clamp(Math.acos(offset.y / offset.length()), 0.1, Math.PI / 2 - 0.025),
+        zoom: MathUtils.clamp(savedZoom, MIN_ZOOM, MAX_ZOOM)
+      };
+    },
+    restoreExploration(view) {
+      if (disposed || state !== 'ready' || studyActive || !controls || !validExplorationView(view)) return false;
+      const damping = controls.enableDamping;
+      controls.enableDamping = false;
+      controls.update();
+      const distance = heroPosition.distanceTo(heroTarget);
+      camera.position.set(
+        distance * Math.sin(view.polar) * Math.sin(view.azimuth),
+        distance * Math.cos(view.polar),
+        distance * Math.sin(view.polar) * Math.cos(view.azimuth)
+      ).add(heroTarget);
+      controls.target.copy(heroTarget);
+      camera.zoom = view.zoom;
+      camera.updateProjectionMatrix();
+      controls.update();
+      camera.updateMatrixWorld();
+      controls.enableDamping = damping;
+      return true;
+    },
     selectAnatomy(id) {
       if (!disposed && manual && state === 'ready') inspection?.select(id);
     }

@@ -1,5 +1,7 @@
 # Ankylosaurus English narration intake
 
+This document preserves the historical English intake. Issue #6 adds the independently generated and aligned [German recording](ankylosaurus-narration.de.md), configured with `PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE`. English remains the full-version fallback when German configuration is absent; invalid configured German data or a network error does not silently change versions.
+
 ## Status and ticket boundary
 
 The user approved the complete English script unchanged and selected ElevenLabs instead of the initial Inworld recordings. The selected voice is **Rowan — Gentle, Soft-Spoken & Warm**, ID `kLhAstPcnnPxqzk6gS5i`; the user reported **Eleven v4** for the selected workflow (the MP3 does not independently identify its engine). The user supplied a current **Starter** subscription screenshot, regenerated all four segments in `media-dev/en/` after activation, and confirmed generation on **2026-10-04** after Starter activation. The owner then listened to all four regenerated segments again and approved pronunciation, unchanged wording, and pacing: **“yeah just listened again to all and it sounds good to me.”** The complete aligned version is now source-controlled and configured locally; real narrated **Meet** acceptance passed in the built static exhibit. This is not acceptance of later four-chapter playback or production model hosting.

@@ -4,7 +4,8 @@ import { pipeline } from 'node:stream/promises';
 
 const media = new Map([
   ['/ankylosaurus.glb', { file: 'ankylosaurus.glb', type: 'model/gltf-binary' }],
-  ['/ankylosaurus-en.mp3', { file: 'ankylosaurus-en.mp3', type: 'audio/mpeg' }]
+  ['/ankylosaurus-en.mp3', { file: 'ankylosaurus-en.mp3', type: 'audio/mpeg' }],
+  ['/ankylosaurus-de.mp3', { file: 'ankylosaurus-de.mp3', type: 'audio/mpeg' }]
 ]);
 
 createServer(async (request, response) => {
@@ -89,4 +90,5 @@ createServer(async (request, response) => {
 }).listen(5194, '127.0.0.1', () => {
   console.log('Local model: http://127.0.0.1:5194/ankylosaurus.glb');
   console.log('Optional local narration: http://127.0.0.1:5194/ankylosaurus-en.mp3');
+  console.log('Optional German narration: http://127.0.0.1:5194/ankylosaurus-de.mp3');
 });
