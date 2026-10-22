@@ -1,0 +1,46 @@
+{
+  "id": "ankylosaurus-de-2026-10-22-rowan-fbcb618c1fab",
+  "language": "de",
+  "url": "http://127.0.0.1:5194/ankylosaurus-de.mp3",
+  "duration": 52.4015,
+  "chapters": [
+    { "id": "meet", "start": 0 },
+    { "id": "scale", "start": 13.79265306122449 },
+    { "id": "armor", "start": 23.588571428571427 },
+    { "id": "world", "start": 40.51591836734694 }
+  ],
+  "cues": [
+    { "start": 0, "end": 13.79265306122449, "view": "hero" },
+    { "start": 13.79265306122449, "end": 23.588571428571427, "view": "scale" },
+    { "start": 23.588571428571427, "end": 31.56, "view": "armor" },
+    { "start": 31.56, "end": 40.51591836734694, "view": "tailClub" },
+    { "start": 40.51591836734694, "end": 52.4015, "view": "world" }
+  ],
+  "captions": [
+    { "start": 0, "end": 1.96, "text": "Das ist Ankylosaurus." },
+    { "start": 2.3, "end": 5.26, "text": "Mit seinem breiten Körper, dem Knochenpanzer" },
+    { "start": 5.5, "end": 9.46, "text": "und der schweren Schwanzkeule wirkt dieser Dinosaurier wehrhaft." },
+    { "start": 9.82, "end": 12.08, "text": "Doch er jagte keine anderen Dinosaurier." },
+    { "start": 12.38, "end": 13.5, "text": "Er fraß Pflanzen." },
+    { "start": 13.84, "end": 17.34, "text": "Ein erwachsenes Tier konnte ungefähr acht Meter lang werden." },
+    { "start": 17.8, "end": 20.26, "text": "Der Mensch daneben zeigt dir, wie groß das ist." },
+    { "start": 20.64, "end": 23.48, "text": "Diese Länge wurde anhand von Fossilien geschätzt." },
+    { "start": 23.72, "end": 26.5, "text": "Knochenplatten, die Osteoderme heißen," },
+    { "start": 26.66, "end": 28.34, "text": "bildeten sich in seiner Haut." },
+    { "start": 28.68, "end": 31.22, "text": "Sie schützten ihn vermutlich wie eine Rüstung." },
+    { "start": 31.56, "end": 34.78, "text": "Am Schwanzende saß eine schwere Keule aus Knochen." },
+    { "start": 35.2, "end": 38.5, "text": "Forschende vermuten, dass Ankylosaurus sie schwingen konnte," },
+    { "start": 38.72, "end": 40.3, "text": "um einen Angreifer zu treffen." },
+    { "start": 40.58, "end": 44.18, "text": "Ankylosaurus lebte im Gebiet des heutigen Nordamerikas," },
+    { "start": 44.42, "end": 48.08, "text": "vor ungefähr achtundsechzig bis sechsundsechzig Millionen Jahren," },
+    { "start": 48.32, "end": 49.86, "text": "gegen Ende der Kreidezeit." },
+    { "start": 50.24, "end": 52.26, "text": "Schau ihn dir jetzt selbst genauer an." }
+  ],
+  "provenance": {
+    "voice": "ElevenLabs Rowan — Gentle, Soft-Spoken & Warm; voice ID kLhAstPcnnPxqzk6gS5i verified through the voice picker. Eleven v4, stability 50%, similarity 75%, clone strength 0%, MP3 44.1 kHz/128 kbit/s. World: German language override, user-selected Generation 2.",
+    "generated": "2026-10-22, after explicit German-script and Rowan-access approval in the issue #6 implementation conversation. Meet/Scale/Armor Generation 1; revised World Generation 2 selected after the owner's pronunciation feedback. Assembled without re-encoding; SHA-256 fbcb618c1fab8ecb07c1a9b1cbbf84ce4f23be5ef438ee433a971e0f2d048cb9. See ankylosaurus-narration.de.md for the precise audition record.",
+    "terms": "Reviewed 2026-10-22: paid-output use remains subject to necessary rights, applicable terms/policies and voice restrictions. https://elevenlabs.io/terms-of-use-eu (updated 2026-10-09); https://elevenlabs.io/use-policy ; https://elevenlabs.io/vla ; https://elevenlabs.io/bsa ; https://help.elevenlabs.io/hc/en-us/articles/13313564601361-Can-I-publish-the-content-I-generate-on-the-platform . Beta Services exclude production/commercial use. Media rights are separate from the application's MIT license; no production-publication approval is inferred.",
+    "attribution": "German narration generated with ElevenLabs; Rowan — Gentle, Soft-Spoken & Warm. Voluntary credit; standard paid-output help does not require free-tier title attribution.",
+    "paidPlanEvidence": "Active Starter plan observed in the signed-in ElevenLabs account before generation on 2026-10-22; the user authorized the voice and script in the implementation conversation. Non-secret observation only. Private account/billing screenshots and credentials are not retained in source control."
+  }
+}

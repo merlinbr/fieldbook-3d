@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { parseStudyVersion, validateRecordingDuration } from '../src/lib/viewer/study-data.ts';
+import * as studyData from '../src/lib/viewer/study-data.ts';
 import { createFieldStudy, evaluateStudyFrame } from '../src/lib/viewer/field-study.ts';
 import { Box3, BoxGeometry, Color, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
 import { createScaleComparison } from '../src/lib/viewer/scale-comparison.ts';
@@ -32,14 +34,62 @@ const data = {
   }
 };
 const parse = (value) => parseStudyVersion(JSON.stringify(value));
+assert.equal(parse({ ...data, language: 'de' }).error, null, 'German recordings retain independent complete metadata');
 const { version, error } = parse(data);
 assert.equal(error, null);
 assert.ok(version);
+assert.equal(typeof studyData.resolveStudyVersion, 'function', 'resolve a complete version for the document language');
+const germanData = {
+  ...data, id: 'german-boundary-check', language: 'de', duration: 48,
+  chapters: data.chapters.map((chapter) => ({ ...chapter, start: chapter.start * 1.2 })),
+  cues: data.cues.map((cue) => ({ ...cue, start: cue.start * 1.2, end: cue.end * 1.2 })),
+  captions: data.captions.map((cue) => ({ ...cue, start: cue.start * 1.2, end: cue.end * 1.2 }))
+};
+const englishRaw = JSON.stringify(data);
+const germanRaw = JSON.stringify(germanData);
+assert.equal(studyData.resolveStudyVersion('de', englishRaw, undefined).version.id, 'boundary-check');
+assert.equal(studyData.resolveStudyVersion('de', englishRaw, germanRaw).version.duration, 48);
+assert.equal(studyData.resolveStudyVersion('en', englishRaw, germanRaw).version.duration, 40);
+assert.equal(studyData.resolveStudyVersion('de', englishRaw, '{').error, 'data', 'configured invalid German data is explicit');
+assert.equal(studyData.resolveStudyVersion('de', englishRaw, englishRaw).error, 'data', 'German configuration cannot relabel English');
+assert.equal(studyData.resolveStudyVersion('en', germanRaw, undefined).error, 'data');
+assert.equal(studyData.resolveStudyVersion('de', englishRaw, JSON.stringify({ ...germanData, id: data.id })).error, 'data', 'different recordings require distinct identities');
+const handoff = await import('../src/lib/viewer/study-handoff.ts').catch(() => null);
+assert.ok(handoff, 'validated destination-link handoffs are supported');
+const sourceContext = {
+  specimen: 'ankylosaurus', version: version.id, time: 27.125, chapter: 'armor', captions: false,
+  view: { azimuth: -0.7, polar: 1.1, zoom: 1.2 }
+};
+const germanVersion = parse(germanData).version;
+const encoded = handoff.encodeStudyHandoff(sourceContext);
+assert.ok(encoded.length < 1024);
+assert.equal(handoff.parseStudyHandoff(encoded, [version, germanVersion], version).time, 27.125);
+const mapped = handoff.parseStudyHandoff(encoded, [version, germanVersion], germanVersion);
+assert.equal(mapped.time, 24, 'different recording selects corresponding chapter start, never proportional time');
+assert.equal(mapped.captions, false);
+assert.deepEqual(mapped.view, sourceContext.view);
+for (const change of [
+  { specimen: 'other' }, { version: 'unknown' }, { time: -1 }, { time: 40.01 }, { time: '27' },
+  { time: null }, { chapter: 'world' }, { captions: 'false' }, { captions: 0 },
+  { view: { ...sourceContext.view, zoom: 99 } }, { view: { ...sourceContext.view, polar: 0 } },
+  { view: { ...sourceContext.view, azimuth: 9 } }, { view: null }
+]) assert.equal(handoff.parseStudyHandoff(JSON.stringify({ ...sourceContext, ...change }), [version, germanVersion], germanVersion), null);
+assert.equal(handoff.parseStudyHandoff('{', [version], version), null);
+assert.equal(handoff.parseStudyHandoff(' '.repeat(1025), [version], version), null);
+const endpointContext = { ...sourceContext, time: 40, chapter: 'world' };
+assert.equal(handoff.parseStudyHandoff(JSON.stringify(endpointContext), [version], version).time, 40);
+// Published metadata is checked as well as boundary inputs; these assertions do not replace real-media acceptance.
+const realEnglish = parseStudyVersion(readFileSync(new URL('../docs/assets/ankylosaurus-narration.en.json', import.meta.url), 'utf8')).version;
+const realGerman = parseStudyVersion(readFileSync(new URL('../docs/assets/ankylosaurus-narration.de.json', import.meta.url), 'utf8')).version;
+assert.ok(realEnglish && realGerman);
+assert.equal(realGerman.duration, 52.4015);
+assert.equal(handoff.parseStudyHandoff(JSON.stringify({ ...sourceContext, version: realEnglish.id, time: 42, chapter: 'world' }), [realEnglish, realGerman], realGerman).time, 40.51591836734694);
+assert.equal(handoff.parseStudyHandoff(JSON.stringify({ ...sourceContext, version: realGerman.id, time: 42, chapter: 'world' }), [realEnglish, realGerman], realEnglish).time, 39.053061224489795);
 assert.equal(parseStudyVersion(undefined).error, 'missing');
 assert.equal(parseStudyVersion(' ').error, 'missing');
 assert.equal(parseStudyVersion('{').error, 'data');
 for (const change of [
-  { language: 'de' }, { duration: 29 }, { duration: 61 }, { provenance: {} },
+  { language: 'fr' }, { duration: 29 }, { duration: 61 }, { provenance: {} },
   { captions: [] }, { captions: [{ start: 10, end: 12, text: 'Not Meet' }] },
   { captions: [{ start: 0, end: 1, text: ' ' }] },
   { cues: [] }, { cues: [{ start: 0, end: 10, view: 'armor' }] },
@@ -221,6 +271,46 @@ function harness(recording = version) {
     async composed(index = compositions.length - 1) { compositions[index].resolve(true); await settle(); }
   };
 }
+
+const restored = harness();
+assert.equal(typeof restored.study.restore, 'function', 'handoff restoration enters paused without calling Play');
+assert.equal(restored.study.restore({ time: 27.125, captions: false }), true);
+assert.equal(restored.snapshot.requestedPlaying, false);
+assert.equal(restored.snapshot.captionsEnabled, false);
+restored.audio.metadata();
+restored.audio.canplay();
+restored.audio.finishSeek();
+await restored.composed();
+assert.equal(restored.snapshot.phase, 'paused');
+assert.equal(restored.snapshot.time, 27.125);
+assert.equal(restored.snapshot.chapter, 'armor');
+assert.equal(restored.audio.plays.length, 0);
+restored.study.play();
+await restored.composed();
+restored.audio.finishPlay();
+await settle();
+restored.audio.at(28.25);
+assert.deepEqual(restored.study.transfer(), { time: 28.25, chapter: 'armor', captions: false });
+assert.equal(restored.snapshot.phase, 'leaving');
+assert.equal(restored.audio.src, '', 'old document unloads media before navigation begins');
+restored.study.play();
+restored.audio.canplay();
+assert.equal(restored.audio.plays.length, 1, 'leaving cannot start another play');
+restored.study.dispose();
+const transferLoading = harness();
+transferLoading.study.start();
+transferLoading.study.seek(31);
+assert.deepEqual(transferLoading.study.transfer(), { time: 31, chapter: 'world', captions: true });
+transferLoading.audio.metadata();
+await transferLoading.composed(0);
+assert.equal(transferLoading.snapshot.phase, 'leaving', 'stale readiness/composition cannot restart navigation');
+assert.equal(transferLoading.audio.plays.length, 0);
+transferLoading.study.dispose();
+const invalidRestore = harness();
+assert.equal(invalidRestore.study.restore({ time: Infinity, captions: true }), false);
+assert.equal(invalidRestore.study.restore({ time: 41, captions: true }), false);
+assert.equal(invalidRestore.snapshot.active, false);
+invalidRestore.study.dispose();
 
 // Public navigation commands exercise the controller, not a copy of its timeline.
 const navigation = harness();

@@ -22,7 +22,7 @@ export type StudyView = {
 
 export type StudySnapshot = {
   active: boolean;
-  phase: 'explore' | 'loading' | 'restoring' | 'playing' | 'paused' | 'buffering' | 'seeking' | 'error';
+  phase: 'explore' | 'loading' | 'restoring' | 'playing' | 'paused' | 'buffering' | 'seeking' | 'error' | 'leaving';
   requestedPlaying: boolean;
   time: number;
   duration: number;
@@ -34,6 +34,8 @@ export type StudySnapshot = {
 
 export type StudyHandle = {
   start(): void;
+  restore(position: { time: number; captions: boolean }): boolean;
+  transfer(): { time: number; chapter: StudyFrame['chapter']; captions: boolean } | null;
   pause(): void;
   play(): void;
   seek(time: number): void;
@@ -387,7 +389,7 @@ export function createFieldStudy(
   }
 
   function seek(time: number): void {
-    if (disposed || !state.active || state.error || !Number.isFinite(time)) return;
+    if (disposed || !state.active || state.phase === 'leaving' || state.error || !Number.isFinite(time)) return;
     ++command;
     pendingPlay = null;
     composing = false;
@@ -539,23 +541,53 @@ export function createFieldStudy(
     }
   }
 
-  function start(): void {
-    if (disposed || state.active || !view.begin()) return;
+  function enter(time: number, captions: boolean, playing: boolean): boolean {
+    if (disposed || state.active || !view.begin()) return false;
     state.active = true;
-    state.requestedPlaying = true;
-    state.time = 0;
+    state.requestedPlaying = playing;
+    metadataReady = false;
+    state.time = time;
     state.duration = version.duration;
-    state.captionsEnabled = true;
+    state.captionsEnabled = captions;
     state.error = null;
     state.phase = 'loading';
     readTime();
     view.setFrame(sample);
     compose(frameCopy());
-    if (state.active) load(0);
+    if (state.active) load(time);
+    return state.active;
+  }
+
+  function start(): void {
+    enter(0, true, true);
+  }
+
+  function restore(position: { time: number; captions: boolean }): boolean {
+    if (!Number.isFinite(position.time) || position.time < 0 || position.time > version.duration ||
+      typeof position.captions !== 'boolean') return false;
+    return enter(position.time, position.captions, false);
+  }
+
+  function transfer(): { time: number; chapter: StudyFrame['chapter']; captions: boolean } | null {
+    if (disposed || !state.active) return null;
+    if (state.phase !== 'leaving') {
+      if (retainedSeek !== null) state.time = retainedSeek;
+      else readTime();
+      state.time = Math.min(state.time, version.duration);
+      assignStudyFrame(version, state.time, frame, scaleCue, armorCue, tailClubCue, worldCue);
+      state.chapter = frame.chapter;
+      state.requestedPlaying = false;
+      unload();
+      view.pause(frameCopy());
+      state.error = null;
+      state.phase = 'leaving';
+      publish(true);
+    }
+    return { time: state.time, chapter: frame.chapter, captions: state.captionsEnabled };
   }
 
   function pause(): void {
-    if (disposed || !state.active || state.phase === 'error') return;
+    if (disposed || !state.active || state.phase === 'error' || state.phase === 'leaving') return;
     const seeking = settlingSeek || audio.seeking;
     ++command;
     pendingPlay = null;
@@ -577,7 +609,7 @@ export function createFieldStudy(
   }
 
   function play(): void {
-    if (disposed || !state.active || (state.error && state.error !== 'blocked') || state.requestedPlaying) return;
+    if (disposed || !state.active || state.phase === 'leaving' || (state.error && state.error !== 'blocked') || state.requestedPlaying) return;
     state.error = null;
     state.requestedPlaying = true;
     if (settlingSeek || audio.seeking) {
@@ -668,5 +700,5 @@ export function createFieldStudy(
   if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide);
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
   publish();
-  return { start, pause, play, seek, moveChapter, retry, exit, setCaptions, dispose };
+  return { start, restore, transfer, pause, play, seek, moveChapter, retry, exit, setCaptions, dispose };
 }

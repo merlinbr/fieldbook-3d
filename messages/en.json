@@ -55,5 +55,9 @@
   "studySeekValue": "{time} of {duration}",
   "studyChapters": "Study chapters",
   "studyPrevious": "Previous chapter",
-  "studyNext": "Next chapter"
+  "studyNext": "Next chapter",
+  "studyGerman": "Narration in German",
+  "studyLeaving": "Narration stopped. Changing language… Exit to Explore if navigation is interrupted.",
+  "studyHandoffLoading": "Preparing your paused study…",
+  "studyHandoffInvalid": "This study link could not be restored. You can explore or start a new study."
 }

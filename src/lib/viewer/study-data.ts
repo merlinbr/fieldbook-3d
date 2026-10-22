@@ -1,6 +1,6 @@
 export type StudyVersion = Readonly<{
   id: string;
-  language: 'en';
+  language: 'en' | 'de';
   url: string;
   duration: number;
   chapters: readonly Readonly<{ id: 'meet' | 'scale' | 'armor' | 'world'; start: number }>[];
@@ -83,8 +83,8 @@ export function parseStudyVersion(raw: string | undefined): {
   try {
     const data = object(JSON.parse(raw));
     const duration = time(data.duration);
-    if (duration < 30 || duration > 60 || data.language !== 'en') {
-      throw new RangeError('This study requires a 30–60 second English recording');
+    if (duration < 30 || duration > 60 || !['en', 'de'].includes(data.language as string)) {
+      throw new RangeError('This study requires a 30–60 second English or German recording');
     }
     const chapterIds = ['meet', 'scale', 'armor', 'world'] as const;
     if (!Array.isArray(data.chapters) || data.chapters.length !== chapterIds.length) {
@@ -139,7 +139,7 @@ export function parseStudyVersion(raw: string | undefined): {
     });
     return {
       version: Object.freeze({
-        id: text(data.id), language: 'en', url: mediaUrl(data.url), duration,
+        id: text(data.id), language: data.language as 'en' | 'de', url: mediaUrl(data.url), duration,
         chapters, cues, captions, provenance
       }),
       error: null
@@ -160,4 +160,16 @@ export function validateRecordingDuration(version: StudyVersion, actual: number)
   ) {
     throw new RangeError('Study timestamps exceed the actual recording');
   }
+}
+
+export function resolveStudyVersion(language: 'en' | 'de', english: string | undefined, german: string | undefined) {
+  const useGerman = language === 'de' && !!german?.trim();
+  const result = parseStudyVersion(useGerman ? german : english);
+  if (result.version && result.version.language !== (useGerman ? 'de' : 'en')) {
+    return { version: null, error: 'data' as const };
+  }
+  if (useGerman && result.version && result.version.id === parseStudyVersion(english).version?.id) {
+    return { version: null, error: 'data' as const };
+  }
+  return result;
 }

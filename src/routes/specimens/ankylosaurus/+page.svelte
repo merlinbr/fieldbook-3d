@@ -6,6 +6,15 @@
 
   const locale = getLocale();
   const text = ankylosaurusText[locale];
+  let specimenViewer: SpecimenViewer | undefined;
+
+  function changeLanguage(event: MouseEvent): void {
+    // Native modified clicks open a separate document without interrupting this one.
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const link = event.currentTarget as HTMLAnchorElement;
+    if (link.getAttribute('aria-current') === 'page') return;
+    specimenViewer?.prepareLanguageLink(link);
+  }
 </script>
 
 <svelte:head>
@@ -23,6 +32,7 @@
         hreflang="en"
         aria-current={locale === 'en' ? 'page' : undefined}
         data-sveltekit-reload
+        onclick={changeLanguage}
       >English</a>
       <a
         href={localizeHref('/specimens/ankylosaurus/', { locale: 'de' })}
@@ -30,6 +40,7 @@
         hreflang="de"
         aria-current={locale === 'de' ? 'page' : undefined}
         data-sveltekit-reload
+        onclick={changeLanguage}
       >Deutsch</a>
     </nav>
   </header>
@@ -45,6 +56,6 @@
         <p class="reconstruction-note">{text.reconstruction}</p>
       </div>
     </div>
-    <SpecimenViewer modelUrl={ankylosaurus.modelUrl} anatomy={text.anatomy} recording={ankylosaurus.study} />
+    <SpecimenViewer bind:this={specimenViewer} modelUrl={ankylosaurus.modelUrl} anatomy={text.anatomy} recording={ankylosaurus.study[locale]} versions={ankylosaurus.versions} />
   </main>
 </div>
