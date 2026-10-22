@@ -50,5 +50,10 @@
   "studyChapterWorld": "Chapter 4 — Its ancient world",
   "studyWorldLocation": "What is now North America",
   "studyWorldPeriod": "Late Cretaceous",
-  "studyWorldAge": "68–66 million years ago"
+  "studyWorldAge": "68–66 million years ago",
+  "studySeek": "Narration position",
+  "studySeekValue": "{time} of {duration}",
+  "studyChapters": "Study chapters",
+  "studyPrevious": "Previous chapter",
+  "studyNext": "Next chapter"
 }

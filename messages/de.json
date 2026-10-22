@@ -50,5 +50,10 @@
   "studyChapterWorld": "Kapitel 4 — Seine Welt vor langer Zeit",
   "studyWorldLocation": "Im Gebiet des heutigen Nordamerikas",
   "studyWorldPeriod": "Späte Kreidezeit",
-  "studyWorldAge": "Vor 68–66 Millionen Jahren"
+  "studyWorldAge": "Vor 68–66 Millionen Jahren",
+  "studySeek": "Position der Erzählung",
+  "studySeekValue": "{time} von {duration}",
+  "studyChapters": "Kapitel der Feldstudie",
+  "studyPrevious": "Vorheriges Kapitel",
+  "studyNext": "Nächstes Kapitel"
 }

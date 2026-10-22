@@ -342,6 +342,11 @@ h1 {
 .study-caption { margin-top: 0.75rem; min-height: 3rem; max-width: 65ch; font-size: 1.125rem; }
 .study-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .study-controls button[aria-pressed='true'] { border-color: var(--amber); color: var(--amber); }
+.study-timeline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; margin-top: 1rem; }
+.study-time { font-variant-numeric: tabular-nums; }
+.study-timeline input { flex: 1 1 100%; width: 100%; min-width: 44px; min-height: 44px; margin: 0; accent-color: var(--amber); cursor: pointer; }
+.study-chapters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+.study-chapters button[aria-current='step'] { border: 2px solid var(--amber); color: var(--amber); }
 
 .world-context { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2rem; margin-top: 0.75rem; padding: 0.75rem 0; border-block: 1px solid #68705c; }
 .world-context > p, .world-time { flex: 1 1 14rem; min-width: 0; }
