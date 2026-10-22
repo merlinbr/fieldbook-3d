@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import { Color, DirectionalLight, HemisphereLight, MeshStandardMaterial, SpotLight } from 'three';
+import { createStudyPresentation } from '../src/lib/viewer/study-presentation.ts';
+import { createStudyDust } from '../src/lib/viewer/study-dust.ts';
+
+const background = new Color('#22251f');
+const hemisphere = new HemisphereLight('#fffae7', '#626851', 2);
+const key = new DirectionalLight('#fff7df', 2.8);
+const fill = new DirectionalLight('#e9f0dc', 0.8);
+const spotlight = new SpotLight('#fff1ce', 0);
+spotlight.position.set(-2, 8, 5);
+const dust = createStudyDust(spotlight);
+const plinths = [new MeshStandardMaterial({ color: '#7c806a' }), new MeshStandardMaterial({ color: '#7c806a' })];
+const originalBackground = background.clone();
+const originalPlinth = plinths[0].color.clone();
+const presentation = createStudyPresentation({ background, hemisphere, key, fill, spotlight, plinths, dust });
+
+// Missing interpolation would cause a flash on Start/Pause; repeated status updates must not restart it.
+presentation.setActive(true, 0, false);
+assert.ok(background.equals(originalBackground), 'Start preserves the first frame for a smooth fade');
+presentation.update(175, false);
+assert.ok(background.r < originalBackground.r && background.r > 0);
+assert.ok(hemisphere.intensity < 2 && hemisphere.intensity > 0);
+assert.ok(spotlight.visible && spotlight.intensity > 0);
+assert.ok(plinths[0].color.r < originalPlinth.r);
+assert.ok(plinths[0].color.equals(plinths[1].color), 'Scale support and specimen plinth fade together');
+presentation.setActive(true, 175, false);
+presentation.update(350, false);
+const cinemaBackground = background.clone();
+const cinemaSpotlight = spotlight.intensity;
+const settledDust = dust.root.geometry.getAttribute('position').array.slice();
+presentation.update(500, false);
+assert.ok(background.equals(cinemaBackground), 'repeated active snapshots do not prolong the transition');
+assert.equal(spotlight.intensity, cinemaSpotlight);
+assert.notDeepEqual(dust.root.geometry.getAttribute('position').array, settledDust, 'dust keeps moving after the lighting fade settles');
+
+// Rapid Pause/Play must reverse from the currently visible appearance, without jumping.
+presentation.setActive(false, 500, false);
+presentation.update(675, false);
+const interruptedBackground = background.clone();
+presentation.setActive(true, 675, false);
+assert.ok(background.equals(interruptedBackground), 'reversing a fade preserves the current appearance');
+presentation.update(1025, false);
+assert.ok(background.equals(cinemaBackground));
+presentation.setActive(false, 1025, false);
+presentation.update(1375, false);
+assert.ok(background.equals(originalBackground), 'Pause/Exit restore the exact Explore background');
+assert.ok(plinths.every((material) => material.color.equals(originalPlinth)));
+assert.equal(hemisphere.intensity, 2);
+assert.equal(key.intensity, 2.8);
+assert.equal(fill.intensity, 0.8);
+assert.equal(spotlight.intensity, 0);
+assert.equal(spotlight.visible, false, 'Explore incurs no active spotlight');
+assert.equal(dust.root.visible, false, 'the presentation removes dust after its return fade');
+
+presentation.setActive(true, 1400, true);
+assert.ok(background.equals(cinemaBackground), 'reduced motion enters cinema immediately');
+assert.equal(dust.root.visible, false, 'reduced-motion cinema retains lighting without dust');
+presentation.update(1401, false);
+assert.equal(dust.root.visible, true, 'turning reduced motion off restores normal playback dust');
+presentation.update(1402, true);
+assert.equal(dust.root.visible, false, 'a preference change hides dust even when lighting is already settled');
+presentation.setActive(false, 1500, false);
+presentation.update(1501, true);
+assert.ok(background.equals(originalBackground), 'enabling reduced motion settles an in-progress fade');
+presentation.setActive(true, 1600, true);
+presentation.reset();
+presentation.update(2000, false);
+assert.ok(background.equals(originalBackground), 'cleanup cancels any remaining presentation');
+assert.ok(plinths.every((material) => material.color.equals(originalPlinth)));
+assert.equal(spotlight.visible, false);
+assert.equal(dust.root.visible, false);
+dust.dispose();
+console.log('Study presentation fades, interruption, restoration, and reduced motion assertions passed.');
