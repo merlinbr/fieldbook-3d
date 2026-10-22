@@ -12,7 +12,7 @@
     "check": "node tools/paraglide.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:camera": "node checks/camera-fit.mjs",
     "check:anatomy": "node checks/anatomy-input.mjs && node checks/anatomy-inspection.mjs",
-    "check:study": "node checks/field-study.mjs",
+    "check:study": "node checks/field-study.mjs && node checks/study-presentation.mjs && node checks/study-dust.mjs",
     "media:dev": "node tools/serve-dev-media.mjs"
   },
   "dependencies": { "three": "0.186.1" },

@@ -1,6 +1,6 @@
 # Fieldbook 3D
 
-One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Start plays Meet → Scale → Armor → World through a complete English or German recording, with matching captions and chapter navigation. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. World returns to a wider specimen view with localized present-day North America wording and a Late Cretaceous time band marking 68–66 million years ago. Language changes restore a paused study and preserve its original return-to-Explore view. Cinema/particles remain ticket #7.
+One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Start plays Meet → Scale → Armor → World through a complete English or German recording, with matching captions and chapter navigation. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. World returns to a wider specimen view with localized present-day North America wording and a Late Cretaceous time band marking 68–66 million years ago. Language changes restore a paused study and preserve its original return-to-Explore view. Cinema presentation adds focused warm lighting and restrained drifting dust; reduced motion retains the lighting without particles.
 
 ## Issue #1 delivery gate — 2026-10-04
 
@@ -263,6 +263,20 @@ Observed against the built static exhibit on port 4173 and actual separately ser
 - **Verification:** `npm run check` reported zero errors/warnings; camera, anatomy and the single framework-free study regression check passed. The development-mode static build passed with the existing large-chunk and color-environment warnings. Real German media decoded successfully; its served HEAD response reported the matching 838,469-byte MP3. No recording/model/font binaries were present in application output. Temporary probes were removed; only the existing regression check and source metadata/docs remain.
 
 Limits: desktop Chromium viewport, text-size and reduced-motion emulation; no physical-device, other-browser or actual screen-reader session. Emulated touch and every anatomy gesture were not re-exercised for this ticket. Successful Retry recovery and a new mid-playback WebGL context-loss test were not repeated. Provider account screenshots/billing details remain private, and no production CDN or model publication-rights verification was performed. Cinema/particles remain issue #7.
+
+## Cinema presentation — issue #7
+
+Requested playback now fades the stage and surrounding surfaces to a darker warm-charcoal treatment, darkens both the specimen plinth and Scale support, and adds a soft warm spotlight over the specimen. Captions, chapter graphics, language links, and playback controls retain their readable colors and focus indicators. The existing key light supplies shadows; the spotlight adds no shadow pass or second animation loop.
+
+One 48-point cloud adds faint warm dust within the spotlight. A tiny in-memory soft sprite needs no media request. Dust uses the existing render loop, a single additional draw call, normal depth testing against nearer anatomy, and no depth writes or shadows. Positions drift slowly within the beam and follow specimen calibration. The cloud fades with the cinema lighting and stops updating positions when hidden. Reduced motion hides it immediately, including preference changes during playback. Its geometry, material, and texture are disposed together.
+
+Presentation follows playback intent independently of camera ownership: loading, buffering, and playing seeks retain cinema mode; Pause, media errors, Exit, and completion restore Explore appearance. Paused seeks and incoming language handoffs retain normal lighting. Entry/return fades take 350 ms and can reverse without a jump. Reduced motion settles immediately, including when the preference changes during a fade.
+
+Observed on the built static preview with the actual model and English/German MP3s in muted headless Chromium:
+
+- Start, Pause, paused Armor seek and anatomy inspection, Resume, Scale, and Exit passed. Exit restored the original rotated/zoomed Explore canvas pixel-for-pixel after the fade.
+- English→German navigation restored paused with normal lighting and native audio stopped. Reduced motion, German phone layout at 390×844 with 200% root text, and native completion returned the normal presentation without horizontal overflow or page errors. Desktop Meet/Scale/Armor/World and enlarged German phone screenshots were inspected. A native-media error event injected during World restored normal presentation and exposed Retry/Exit.
+- Svelte checks, camera/anatomy/study regressions, and the development-mode static build passed. The presentation/dust regressions cover interruption, repeated requests, exact restoration, motion inside the spotlight, hidden/reduced-motion updates, preference changes, and cleanup. Browser draw-call instrumentation confirmed the 48-point cloud during normal playback, with no particle draws in Explore, paused inspection, or reduced-motion playback. Browser checks cover Chromium emulation; physical devices and other browsers were not exercised.
 
 ## Licensing and media boundary
 

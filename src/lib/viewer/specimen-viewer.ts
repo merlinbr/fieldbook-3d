@@ -17,6 +17,7 @@ import {
   Quaternion,
   Scene,
   Sphere,
+  SpotLight,
   Texture,
   Vector3,
   WebGLRenderer
@@ -34,6 +35,9 @@ import type { StudyEmphasis } from './study-emphasis.ts';
 import type { StudyFrame, StudyView } from './field-study.ts';
 import { createScaleComparison } from './scale-comparison.ts';
 import type { ScaleComparison, ScaleProjection } from './scale-comparison.ts';
+import { createStudyPresentation } from './study-presentation.ts';
+import { createStudyDust } from './study-dust.ts';
+import type { StudyDust } from './study-dust.ts';
 export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
 export type ViewerHandle = {
@@ -42,6 +46,7 @@ export type ViewerHandle = {
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
   selectAnatomy(id: AnatomyId | null): void;
+  setCinema(active: boolean): void;
   savedExploration(): ExplorationView | null;
   restoreExploration(view: ExplorationView): boolean;
   study: StudyView;
@@ -97,6 +102,8 @@ export function createSpecimenViewer(
   const hemisphere = new HemisphereLight('#fffae7', '#626851', 2);
   const key = new DirectionalLight('#fff7df', 2.8);
   const fill = new DirectionalLight('#e9f0dc', 0.8);
+  const spotlight = new SpotLight('#fff1ce', 0, 0, Math.PI / 5, 0.8, 0);
+  spotlight.visible = false;
   scene.add(hemisphere, key, key.target, fill, fill.target);
 
   let renderer: WebGLRenderer | undefined;
@@ -105,6 +112,8 @@ export function createSpecimenViewer(
   let motionPreference: MediaQueryList | undefined;
   let inspection: AnatomyInspection | undefined;
   let emphasis: StudyEmphasis | undefined;
+  let presentation: ReturnType<typeof createStudyPresentation> | undefined;
+  let dust: StudyDust | undefined;
   let model: Object3D | undefined;
   let modelScenes: Object3D[] = [];
   const scaleTarget = new Vector3();
@@ -178,9 +187,6 @@ export function createSpecimenViewer(
   let savedShadowFar = 0;
   let savedShadowNormalBias = 0;
   let savedShadowBias = 0;
-  let savedHemisphereIntensity = hemisphere.intensity;
-  let savedKeyIntensity = key.intensity;
-  let savedFillIntensity = fill.intensity;
   let transitionZoom = 1;
   let transitionStart = 0;
   let compositionBlend = 0;
@@ -204,9 +210,6 @@ export function createSpecimenViewer(
     controls.enabled = explore;
     controls.enableDamping = explore && !motionPreference?.matches;
     inspection?.setEnabled(explore);
-    hemisphere.intensity = explore ? savedHemisphereIntensity : 1.1;
-    key.intensity = explore ? savedKeyIntensity : 3.5;
-    fill.intensity = explore ? savedFillIntensity : 0.35;
   }
 
   function transformStudyPoint(point: Vector3): void {
@@ -358,9 +361,6 @@ export function createSpecimenViewer(
   function beginStudy(): boolean {
     if (disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
       !studyTargetsReady || !calibrationReady || studyActive) return false;
-    savedHemisphereIntensity = hemisphere.intensity;
-    savedKeyIntensity = key.intensity;
-    savedFillIntensity = fill.intensity;
     ownCamera(false);
     savedPosition.copy(camera.position);
     savedTarget.copy(controls.target);
@@ -495,6 +495,7 @@ export function createSpecimenViewer(
     camera.updateMatrixWorld();
     studyActive = false;
     currentStudyFrame = null;
+    presentation?.setActive(false, performance.now(), motionPreference?.matches ?? false);
     ownCamera(true);
   }
 
@@ -602,6 +603,7 @@ export function createSpecimenViewer(
     controls.enableDamping = false;
     controls.update();
     controls.enableDamping = manual && !motionPreference.matches;
+    presentation?.update(performance.now(), motionPreference.matches);
   }
 
   function render(): void {
@@ -623,6 +625,7 @@ export function createSpecimenViewer(
       }
     }
     controls.update();
+    presentation?.update(performance.now(), motionPreference?.matches ?? false);
     if (!hasSize) return;
     camera.updateMatrixWorld();
     inspection?.update(width, height);
@@ -694,6 +697,10 @@ export function createSpecimenViewer(
     inspection = undefined;
     emphasis?.dispose();
     emphasis = undefined;
+    presentation?.reset();
+    presentation = undefined;
+    dust?.dispose();
+    dust = undefined;
     model = undefined;
     controls?.dispose();
     comparison?.dispose();
@@ -726,6 +733,9 @@ export function createSpecimenViewer(
   handle = {
     calibrationReady: false,
     reset, zoom, orbit, dispose, study,
+    setCinema(active) {
+      if (!disposed) presentation?.setActive(active && studyActive, performance.now(), motionPreference?.matches ?? false);
+    },
     savedExploration() {
       if (disposed || state !== 'ready' || !studyActive) return null;
       const offset = savedPosition.clone().sub(savedTarget);
@@ -833,6 +843,13 @@ export function createSpecimenViewer(
           plinth.position.set(sphere.center.x, bounds.min.y - thickness / 2, sphere.center.z);
           plinth.receiveShadow = true;
           wrapper.add(plinth);
+          // The soft pool follows the calibrated specimen, not the chapter camera.
+          // Reuse the key light's shadows instead of adding another shadow render pass.
+          spotlight.position.copy(sphere.center).add(new Vector3(-0.7, 2.2, 1.5).multiplyScalar(radius));
+          spotlight.target.position.copy(sphere.center);
+          wrapper.add(spotlight, spotlight.target);
+          dust = createStudyDust(spotlight);
+          wrapper.add(dust.root);
           try {
             comparison = createScaleComparison(bounds, specimenMeshes, onScale);
             scene.add(comparison.root);
@@ -847,6 +864,15 @@ export function createSpecimenViewer(
               human: { visible: false, x: 0, y: 0 }
             });
           }
+          const plinths = [plinth.material];
+          comparison?.root.traverse((object) => {
+            if (object.name === 'study-plinth-extension' && object instanceof Mesh && object.material instanceof MeshStandardMaterial) {
+              plinths.push(object.material);
+            }
+          });
+          presentation = createStudyPresentation({
+            background: scene.background as Color, hemisphere, key, fill, spotlight, plinths, dust
+          });
           key.position.copy(sphere.center).add(new Vector3(-2, 4, 3).multiplyScalar(radius));
           key.target.position.copy(sphere.center);
           key.castShadow = true;

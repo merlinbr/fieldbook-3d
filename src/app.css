@@ -348,6 +348,24 @@ h1 {
 .study-chapters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
 .study-chapters button[aria-current='step'] { border: 2px solid var(--amber); color: var(--amber); }
 
+/* Change surfaces rather than text opacity: captions, navigation and focus stay readable. */
+body,
+.specimen-viewer,
+.viewer-stage,
+.study-ui {
+  transition: background-color 350ms ease-in-out, border-color 350ms ease-in-out;
+}
+body { background-color: var(--charcoal); }
+body:has(.specimen-viewer.cinema) { background-color: #101410; }
+.specimen-viewer.cinema { background-color: #111510; }
+.specimen-viewer.cinema .viewer-stage { background-color: #0d100e; }
+.specimen-viewer.cinema .study-ui { background-color: #191e18; border-color: #515b48; }
+.specimen-viewer.cinema .viewer-controls button:disabled,
+.specimen-viewer.cinema .anatomy-controls button:disabled { border-color: #353d30; }
+@media (prefers-reduced-motion: reduce) {
+  body, .specimen-viewer, .viewer-stage, .study-ui { transition: none; }
+}
+
 .world-context { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2rem; margin-top: 0.75rem; padding: 0.75rem 0; border-block: 1px solid #68705c; }
 .world-context > p, .world-time { flex: 1 1 14rem; min-width: 0; }
 .world-context p { margin: 0; }

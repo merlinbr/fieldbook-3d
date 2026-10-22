@@ -55,6 +55,7 @@
   let handoffFailed = $state(false);
   const studying = $derived(studyState?.active ?? false);
   const leaving = $derived(studyState?.phase === 'leaving');
+  const cinema = $derived(studying && !!studyState?.requestedPlaying && !studyState?.error && !leaving);
   const narrationLanguage = $derived(recording.version?.language === 'de' ? m.studyGerman() : m.studyEnglish());
   const canInspect = $derived(!studying || studyState?.phase === 'paused');
   const targetsReady = $derived(['armor', 'tailClub'].every((id) => inspection?.regions.find((region) => region.id === id)?.available));
@@ -157,6 +158,7 @@
     const moveErrorFocus = next.phase === 'error' && !!focused &&
       (focused === playButton || !!note?.contains(focused) || !!exploreControls?.contains(focused));
     studyState = next;
+    viewer?.setCinema(cinema);
     if (moveErrorFocus) void focusStudyControl();
     if (returnFocus) {
       const generation = ++focusGeneration;
@@ -298,7 +300,7 @@
   });
 </script>
 
-<section class="specimen-viewer" aria-label={m.viewerLabel()} tabindex="-1" bind:this={section}>
+<section class="specimen-viewer" class:cinema aria-label={m.viewerLabel()} tabindex="-1" bind:this={section}>
   <div class="inspection-frame" bind:this={frame}>
     <div class="viewer-stage" bind:this={container} aria-busy={viewerState === 'loading'}>
       {#each inspection?.regions ?? [] as region (region.id)}
