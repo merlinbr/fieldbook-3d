@@ -112,7 +112,10 @@ evaluateStudyFrame(version, 30.375, evaluatedFrame);
 assert.equal(evaluatedFrame.worldProgress, 0.5);
 evaluateStudyFrame(version, 39.999, evaluatedFrame);
 assert.equal(evaluatedFrame.worldProgress, 1);
-assert.throws(() => evaluateStudyFrame(version, 40, evaluatedFrame), RangeError);
+evaluateStudyFrame(version, 40, evaluatedFrame);
+assert.equal(evaluatedFrame.chapter, 'world', 'the paused endpoint retains the final World view');
+assert.equal(evaluatedFrame.worldProgress, 1);
+assert.throws(() => evaluateStudyFrame(version, 40.001, evaluatedFrame), RangeError);
 
 function deferred() {
   let resolve;
@@ -185,7 +188,7 @@ documentEvents.visibilityState = 'visible';
 globalThis.window = windowEvents;
 globalThis.document = documentEvents;
 
-function harness() {
+function harness(recording = version) {
   const audio = new MediaProbe();
   const compositions = [];
   const composedFrames = [];
@@ -208,7 +211,7 @@ function harness() {
     exit() { this.locked = false; this.inspection = null; ++this.exits; },
     setFrame(callback) { this.frame = callback; }
   };
-  const study = createFieldStudy(version, view, (next) => { snapshot = next; ++notifications; }, audio);
+  const study = createFieldStudy(recording, view, (next) => { snapshot = next; ++notifications; }, audio);
   return {
     audio, view, study,
     get snapshot() { return snapshot; },
@@ -218,6 +221,124 @@ function harness() {
     async composed(index = compositions.length - 1) { compositions[index].resolve(true); await settle(); }
   };
 }
+
+// Public navigation commands exercise the controller, not a copy of its timeline.
+const navigation = harness();
+navigation.study.start();
+navigation.study.seek(30.375);
+navigation.study.seek(25.375);
+navigation.study.pause();
+navigation.audio.metadata();
+navigation.audio.canplay();
+assert.equal(navigation.audio.currentTime, 25.375, 'latest pre-metadata seek wins');
+navigation.audio.finishSeek();
+await navigation.composed();
+assert.equal(navigation.snapshot.phase, 'paused');
+assert.equal(navigation.snapshot.time, 25.375);
+assert.equal(navigation.composedFrames.at(-1).regionProgress, 0.5);
+assert.equal(navigation.audio.plays.length, 0, 'Pause during loading prevents later playback');
+navigation.audio.position = 9.9995;
+navigation.study.pause();
+navigation.study.seek(10);
+assert.equal(navigation.audio.currentTime, 10, 'nearby seeks must still assign the exact chapter start');
+navigation.audio.finishSeek();
+await navigation.composed();
+assert.equal(navigation.snapshot.chapter, 'scale');
+navigation.study.seek(25.375);
+navigation.audio.finishSeek();
+await navigation.composed();
+navigation.study.moveChapter(-1);
+navigation.audio.finishSeek();
+await navigation.composed();
+assert.equal(navigation.snapshot.time, 10, 'Previous selects the previous chapter, not the current start');
+assert.equal(navigation.snapshot.caption, 'Scale caption');
+navigation.study.moveChapter(1);
+navigation.study.moveChapter(1);
+navigation.audio.finishSeek();
+await navigation.composed();
+assert.equal(navigation.snapshot.time, 30, 'rapid Next commands use the latest requested chapter');
+for (const target of [30.375, 10.375, 20, 25, 0, 40]) {
+  navigation.view.inspection = 'head';
+  navigation.study.seek(target);
+  navigation.audio.finishSeek();
+  await navigation.composed();
+  evaluateStudyFrame(version, target, evaluatedFrame);
+  assert.deepEqual(navigation.composedFrames.at(-1), evaluatedFrame, 'direct/backward reconstruction matches the timeline');
+  assert.equal(navigation.view.inspection, null);
+  assert.equal(navigation.snapshot.phase, 'paused');
+  const count = navigation.compositionCount;
+  navigation.view.inspection = 'armor';
+  navigation.view.frame();
+  navigation.audio.canplay();
+  assert.equal(navigation.compositionCount, count, 'late readiness cannot recompose paused manual framing');
+  assert.equal(navigation.view.inspection, 'armor');
+}
+assert.equal(navigation.snapshot.chapter, 'world');
+assert.equal(navigation.snapshot.caption, '', 'caption intervals exclude their endpoint');
+navigation.study.setCaptions(false);
+assert.equal(navigation.snapshot.active, true, 'caption toggle at paused endpoint must not exit');
+navigation.study.play();
+assert.equal(navigation.snapshot.active, false, 'Play at the endpoint returns to Explore');
+navigation.study.start();
+navigation.audio.metadata();
+navigation.audio.canplay();
+await navigation.composed();
+navigation.audio.finishPlay();
+await settle();
+navigation.study.seek(30.375);
+assert.equal(navigation.snapshot.time, 0, 'unsettled seeks cannot advance presentation');
+navigation.audio.finishSeek();
+const staleComposition = navigation.compositionCount - 1;
+navigation.study.seek(10.375);
+await navigation.composed(staleComposition);
+assert.equal(navigation.audio.plays.length, 1, 'obsolete seek composition cannot start audio');
+navigation.audio.finishSeek();
+await navigation.composed();
+navigation.study.pause();
+navigation.audio.finishPlay();
+await settle();
+assert.equal(navigation.audio.paused, true, 'Pause cancels playback promised by seeking');
+navigation.study.play();
+navigation.study.seek(20);
+navigation.study.exit();
+const exited = navigation.notifications;
+navigation.audio.finishSeek();
+await navigation.composed();
+assert.equal(navigation.notifications, exited, 'Exit detaches pending seek callbacks');
+navigation.study.dispose();
+const naturalEnd = harness();
+naturalEnd.study.start();
+naturalEnd.audio.metadata();
+naturalEnd.audio.canplay();
+await naturalEnd.composed();
+naturalEnd.audio.finishPlay();
+await settle();
+naturalEnd.audio.position = 40;
+naturalEnd.audio.paused = true;
+naturalEnd.audio.ended = true;
+for (const event of ['timeupdate', 'pause', 'ended']) naturalEnd.audio.emit(event);
+assert.equal(naturalEnd.snapshot.phase, 'explore', 'native completion pauses the element before queued timeupdate/pause/ended events');
+naturalEnd.study.dispose();
+const fractionalStart = 10.123456789123456;
+const precise = harness(parse({ ...data, chapters: data.chapters.map((chapter, index) =>
+  index === 1 ? { ...chapter, start: fractionalStart } : chapter
+) }).version);
+const positionDescriptor = Object.getOwnPropertyDescriptor(MediaProbe.prototype, 'currentTime');
+Object.defineProperty(precise.audio, 'currentTime', {
+  get() { return Math.floor(this.position * 1e6) / 1e6; },
+  set(value) { positionDescriptor.set.call(this, value); }
+});
+precise.study.start();precise.audio.metadata();precise.audio.canplay();
+await precise.composed();precise.study.pause();
+precise.study.seek(fractionalStart);precise.audio.finishSeek();await precise.composed();
+assert.equal(precise.snapshot.chapter, 'scale', 'microsecond native precision must not select the previous chapter');
+assert.equal(precise.snapshot.time, fractionalStart, 'retain the resolved command at a quantized media boundary');
+precise.study.seek(Number(fractionalStart.toPrecision(15)));
+precise.audio.finishSeek();await precise.composed();
+assert.equal(precise.snapshot.chapter, 'scale', 'native range serialization must preserve exact chapter starts');
+precise.study.play();await precise.composed();precise.audio.finishPlay();await settle();
+assert.equal(precise.snapshot.chapter, 'scale', 'resume must preserve the resolved boundary until media advances');
+precise.study.dispose();
 const timeline = harness();
 timeline.study.start();
 timeline.audio.metadata();

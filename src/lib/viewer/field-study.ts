@@ -36,6 +36,8 @@ export type StudyHandle = {
   start(): void;
   pause(): void;
   play(): void;
+  seek(time: number): void;
+  moveChapter(direction: -1 | 1): void;
   retry(): void;
   exit(): void;
   setCaptions(enabled: boolean): void;
@@ -75,7 +77,7 @@ function assignStudyFrame(
   const scaleStart = version.chapters[1].start;
   const armorStart = version.chapters[2].start;
   const deliveredEnd = version.duration;
-  if (!Number.isFinite(time) || time < version.chapters[0].start || time >= deliveredEnd) {
+  if (!Number.isFinite(time) || time < version.chapters[0].start || time > deliveredEnd) {
     throw new RangeError('Study frames are available only during the recording');
   }
   out.scaleProgress = 0;
@@ -135,6 +137,12 @@ export function createFieldStudy(
   const armorCue = requireCue(version, 'armor');
   const tailClubCue = requireCue(version, 'tailClub');
   const worldCue = requireCue(version, 'world');
+  const boundaries = [
+    ...version.chapters.map((chapter) => chapter.start),
+    ...version.cues.flatMap((cue) => [cue.start, cue.end]),
+    ...version.captions.flatMap((cue) => [cue.start, cue.end]),
+    version.duration
+  ];
   const frame: StudyFrame = {
     chapter: 'meet', worldProgress: 0, scaleProgress: 0, armorProgress: 0, region: 'armor', regionProgress: 0
   };
@@ -151,6 +159,7 @@ export function createFieldStudy(
   let composing = false;
   let settlingSeek = false;
   let retainedSeek: number | null = null;
+  let resolvedSeek: number | null = null;
   let pendingPlay: number | null = null;
   let removeMediaListeners = () => {};
 
@@ -179,15 +188,19 @@ export function createFieldStudy(
   }
   function readTime(): boolean {
     if (metadataReady && Number.isFinite(audio.currentTime)) {
-      state.time = Math.max(0, Math.min(audio.currentTime, state.duration));
+      const nativeTime = Math.max(0, Math.min(audio.currentTime, state.duration));
+      // Native media rounds to microseconds. Keep the exact resolved chapter/caption boundary
+      // until the audio actually moves, so a rounded-down seek cannot select the previous interval.
+      if (resolvedSeek !== null && Math.abs(nativeTime - resolvedSeek) <= 0.000001) {
+        state.time = resolvedSeek;
+      } else {
+        resolvedSeek = null;
+        state.time = nativeTime;
+      }
     }
     const complete = state.time >= deliveredEnd;
-    if (complete) {
-      state.chapter = null;
-    } else {
-      assignStudyFrame(version, state.time, frame, scaleCue, armorCue, tailClubCue, worldCue);
-      state.chapter = frame.chapter;
-    }
+    assignStudyFrame(version, Math.min(state.time, deliveredEnd), frame, scaleCue, armorCue, tailClubCue, worldCue);
+    state.chapter = frame.chapter;
     state.caption = '';
     if (state.captionsEnabled) {
       for (let index = 0; index < version.captions.length; ++index) {
@@ -355,10 +368,63 @@ export function createFieldStudy(
     });
   }
 
+  function finishSeek(): void {
+    if (!metadataReady || state.error || audio.seeking) return;
+    // A queued native event may belong to an older seek. Only the latest position can unlock audio.
+    if (retainedSeek !== null && Math.abs(audio.currentTime - retainedSeek) > 0.05) {
+      audio.currentTime = retainedSeek;
+      return;
+    }
+    resolvedSeek = retainedSeek;
+    retainedSeek = null;
+    settlingSeek = false;
+    if (readTime() && state.requestedPlaying) {
+      exit();
+      return;
+    }
+    compose(frameCopy());
+    publish(true);
+  }
+
+  function seek(time: number): void {
+    if (disposed || !state.active || state.error || !Number.isFinite(time)) return;
+    ++command;
+    pendingPlay = null;
+    composing = false;
+    composed = false;
+    settlingSeek = true;
+    resolvedSeek = null;
+    // Native range values serialize with fewer digits than recording-derived timestamps.
+    const target = boundaries.find((boundary) => Math.abs(boundary - time) < 1e-9) ?? time;
+    retainedSeek = Math.max(0, Math.min(target, state.duration));
+    state.phase = 'seeking';
+    audio.pause();
+    view.freeze();
+    publish(true);
+    if (!metadataReady) return;
+    try {
+      if (audio.seeking || audio.currentTime !== retainedSeek) {
+        audio.currentTime = retainedSeek;
+      } else {
+        finishSeek();
+      }
+    } catch {
+      fail('media');
+    }
+  }
+
+  function moveChapter(direction: -1 | 1): void {
+    const target = retainedSeek ?? state.time;
+    const current = version.chapters.findLastIndex((chapter) => chapter.start <= target);
+    const next = current + direction;
+    if (next >= 0 && next < version.chapters.length) seek(version.chapters[next].start);
+  }
+
   function load(retainedTime: number): void {
     removeMediaListeners();
     const epoch = ++lifetime;
     metadataReady = false;
+    resolvedSeek = null;
     settlingSeek = false;
     retainedSeek = retainedTime;
     const listeners: [string, EventListener][] = [];
@@ -375,6 +441,7 @@ export function createFieldStudy(
     function freezeForSeek(): void {
       if (!metadataReady || state.error || !audio.seeking || settlingSeek) return;
       settlingSeek = true;
+      resolvedSeek = null;
       ++command;
       pendingPlay = null;
       composing = false;
@@ -387,16 +454,14 @@ export function createFieldStudy(
 
     function metadata(): void {
       if (state.error) return;
-      let positionRestored = false;
+      const restoringPosition = retainedSeek !== null;
       try {
         validateRecordingDuration(version, audio.duration);
         metadataReady = true;
         state.duration = audio.duration;
         if (retainedSeek !== null) {
           const target = retainedSeek;
-          retainedSeek = null;
-          if (Math.abs(audio.currentTime - target) > 0.001) {
-            positionRestored = true;
+          if (audio.currentTime !== target) {
             audio.currentTime = target;
           }
         }
@@ -404,16 +469,23 @@ export function createFieldStudy(
         fail('data');
         return;
       }
-      if (audio.seeking || settlingSeek) {
+      if (audio.seeking) {
         freezeForSeek();
         return;
       }
-      if (readTime()) {
+      if (settlingSeek || restoringPosition) {
+        // Initial loading already composes Meet; a retained seek needs its own resolved frame.
+        if (settlingSeek || retainedSeek !== 0) {
+          finishSeek();
+          return;
+        }
+        retainedSeek = null;
+      }
+      if (readTime() && state.requestedPlaying) {
         exit();
         return;
       }
-      if (positionRestored) compose(frameCopy());
-      else ready();
+      ready();
       publish();
     }
     listen('loadedmetadata', metadata);
@@ -432,7 +504,11 @@ export function createFieldStudy(
     });
     listen('pause', () => {
       if (audio.paused && state.requestedPlaying && !composing && !settlingSeek &&
-        (state.phase === 'playing' || state.phase === 'buffering')) pause();
+        (state.phase === 'playing' || state.phase === 'buffering')) {
+        // At natural completion the native element is already paused before its queued events run.
+        if (readTime()) exit();
+        else pause();
+      }
     });
     function buffering(): void {
       if (mayAdvance() && audio.readyState < 3) {
@@ -445,18 +521,12 @@ export function createFieldStudy(
     listen('seeking', freezeForSeek);
     listen('seeked', () => {
       if (!metadataReady || state.error || audio.seeking || !settlingSeek) return;
-      settlingSeek = false;
-      if (readTime()) {
-        exit();
-        return;
-      }
-      compose(frameCopy());
-      publish(true);
+      finishSeek();
     });
     listen('timeupdate', sample);
     listen('ended', () => {
       if (!metadataReady || state.error || !audio.ended) return;
-      if (readTime()) exit();
+      if (readTime()) { if (state.requestedPlaying) exit(); }
       else fail('media');
     });
     listen('error', () => fail('media'));
@@ -500,10 +570,7 @@ export function createFieldStudy(
       publish(true);
       return;
     }
-    if (readTime()) {
-      exit();
-      return;
-    }
+    readTime();
     view.pause(frameCopy());
     state.phase = 'paused';
     publish(true);
@@ -547,6 +614,7 @@ export function createFieldStudy(
     metadataReady = false;
     settlingSeek = false;
     retainedSeek = null;
+    resolvedSeek = null;
     removeMediaListeners();
     removeMediaListeners = () => {};
     audio.pause();
@@ -574,10 +642,8 @@ export function createFieldStudy(
   function setCaptions(enabled: boolean): void {
     if (disposed || !state.active || state.captionsEnabled === enabled) return;
     state.captionsEnabled = enabled;
-    if (readTime()) {
-      exit();
-      return;
-    }
+    // Caption choice must not sample an unresolved native seek or complete a paused endpoint.
+    state.caption = enabled ? version.captions.find((cue) => state.time >= cue.start && state.time < cue.end)?.text ?? '' : '';
     publish(true);
   }
 
@@ -602,5 +668,5 @@ export function createFieldStudy(
   if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide);
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
   publish();
-  return { start, pause, play, retry, exit, setCaptions, dispose };
+  return { start, pause, play, seek, moveChapter, retry, exit, setCaptions, dispose };
 }

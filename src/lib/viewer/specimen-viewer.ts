@@ -534,7 +534,12 @@ export function createSpecimenViewer(
       if (disposed || !studyActive || !comparison) return;
       currentStudyFrame = frame;
       comparison.setVisible(frame.chapter === 'scale');
+      if (!manual) applyGuidedPose(frame);
       emphasis?.clear();
+      key.target.position.copy(savedKeyTarget);
+      transformStudyPoint(key.target.position);
+      fill.target.position.copy(savedFillTarget);
+      transformStudyPoint(fill.target.position);
       ownCamera(true);
     },
     exit() {

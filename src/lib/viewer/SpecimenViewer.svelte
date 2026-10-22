@@ -77,6 +77,16 @@
     studyState?.chapter === 'armor' ? m.studyChapterArmor() :
     studyState?.chapter === 'world' ? m.studyChapterWorld() : ''
   );
+  const chapters = $derived(recording.version?.chapters ?? []);
+  const chapterIndex = $derived(chapters.findIndex((chapter) => chapter.id === studyState?.chapter));
+  const chapterLabels = $derived({
+    meet: m.studyChapterMeet(), scale: m.studyChapterScale(),
+    armor: m.studyChapterArmor(), world: m.studyChapterWorld()
+  });
+  function clock(time: number): string {
+    const seconds = Math.max(0, Math.floor(time));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  }
 
   async function focusStudyControl(): Promise<void> {
     const generation = ++focusGeneration;
@@ -332,6 +342,25 @@
         {/if}
         <button type="button" aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
         <button type="button" onclick={() => study?.exit()}>{m.studyExit()}</button>
+      </div>
+      <div class="study-timeline">
+        <label for={`${id}-study-seek`}>{m.studySeek()}</label>
+        <span class="study-time">{clock(studyState.time)} / {clock(studyState.duration)}</span>
+        <input id={`${id}-study-seek`} type="range" min="0" max={studyState.duration} step="any"
+          value={studyState.time} aria-valuetext={m.studySeekValue({ time: clock(studyState.time), duration: clock(studyState.duration) })}
+          disabled={!!studyState.error} oninput={(event) => study?.seek(event.currentTarget.valueAsNumber)} />
+      </div>
+      <div class="study-chapters" role="group" aria-label={m.studyChapters()}>
+        {#each chapters as chapter}
+          <button type="button" aria-current={studyState.chapter === chapter.id ? 'step' : undefined}
+            disabled={!!studyState.error} onclick={() => study?.seek(chapter.start)}>{chapterLabels[chapter.id]}</button>
+        {/each}
+      </div>
+      <div class="study-controls">
+        <button type="button" disabled={!!studyState.error || chapterIndex <= 0}
+          onclick={() => study?.moveChapter(-1)}>{m.studyPrevious()}</button>
+        <button type="button" disabled={!!studyState.error || chapterIndex < 0 || chapterIndex >= chapters.length - 1}
+          onclick={() => study?.moveChapter(1)}>{m.studyNext()}</button>
       </div>
     </div>
   {:else}
