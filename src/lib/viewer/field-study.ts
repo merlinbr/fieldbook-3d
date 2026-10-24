@@ -39,6 +39,7 @@ export type StudyHandle = {
   pause(): void;
   play(): void;
   seek(time: number): void;
+  skip(seconds: number): void;
   moveChapter(direction: -1 | 1): void;
   retry(): void;
   exit(): void;
@@ -415,6 +416,13 @@ export function createFieldStudy(
     }
   }
 
+  function skip(seconds: number): void {
+    if (disposed || !state.active || state.phase === 'leaving' || state.error || !Number.isFinite(seconds)) return;
+    // Pending seeks accumulate; otherwise sample native media rather than the throttled UI snapshot.
+    if (retainedSeek === null) readTime();
+    seek((retainedSeek ?? state.time) + seconds);
+  }
+
   function moveChapter(direction: -1 | 1): void {
     const target = retainedSeek ?? state.time;
     const current = version.chapters.findLastIndex((chapter) => chapter.start <= target);
@@ -700,5 +708,5 @@ export function createFieldStudy(
   if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide);
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
   publish();
-  return { start, restore, transfer, pause, play, seek, moveChapter, retry, exit, setCaptions, dispose };
+  return { start, restore, transfer, pause, play, seek, skip, moveChapter, retry, exit, setCaptions, dispose };
 }

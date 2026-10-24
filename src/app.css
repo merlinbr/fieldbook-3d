@@ -340,6 +340,13 @@ h1 {
 .study-status { color: var(--stone); }
 .study-status { margin-top: 0.5rem; }
 .study-caption { margin-top: 0.75rem; min-height: 3rem; max-width: 65ch; font-size: 1.125rem; }
+.study-transport { container-type: inline-size; margin-top: 0.75rem; }
+.study-playback { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.study-playback button { min-width: 0; padding: 0.65rem 0.5rem; overflow-wrap: anywhere; }
+.study-playback .study-play { padding-inline: 0.25rem; border: 2px solid var(--amber); color: var(--amber); font-weight: 700; }
+@container (max-width: 17rem) {
+  .study-playback { grid-template-columns: minmax(0, 1fr); }
+}
 .study-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .study-controls button[aria-pressed='true'] { border-color: var(--amber); color: var(--amber); }
 .study-timeline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; margin-top: 1rem; }

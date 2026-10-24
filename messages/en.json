@@ -43,6 +43,8 @@
   "studyTimingError": "The recording duration or timing data does not match. Correct the recording configuration before retrying.",
   "studyPlay": "Play",
   "studyPause": "Pause",
+  "studyBackFive": "Back 5 seconds",
+  "studyForwardFive": "Forward 5 seconds",
   "studyExit": "Exit to Explore",
   "studyRetry": "Retry narration",
   "studyCaptions": "Captions",

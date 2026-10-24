@@ -43,6 +43,8 @@
   "studyTimingError": "Die Aufnahmedauer oder die Zeitdaten stimmen nicht überein. Korrigiere die Aufnahmekonfiguration vor einem erneuten Versuch.",
   "studyPlay": "Wiedergabe",
   "studyPause": "Pause",
+  "studyBackFive": "5 Sekunden zurück",
+  "studyForwardFive": "5 Sekunden vor",
   "studyExit": "Zurück zum Erkunden",
   "studyRetry": "Erzählung erneut versuchen",
   "studyCaptions": "Untertitel",

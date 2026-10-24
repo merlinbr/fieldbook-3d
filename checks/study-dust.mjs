@@ -21,10 +21,20 @@ const initial = positions.array.slice();
 dust.update(16, 1, false);
 assert.notDeepEqual(positions.array, initial, 'active dust drifts between animation frames');
 
+// Visible drift over a short glance, while remaining gentle at specimen scale.
+for (let time = 32; time <= 2016; time += 16) dust.update(time, 1, false);
+let totalTravel = 0;
+for (let index = 0; index < positions.count; index++) {
+  totalTravel += new Vector3().fromBufferAttribute(positions, index)
+    .distanceTo(new Vector3().fromArray(initial, index * 3));
+}
+const meanTravel = totalTravel / positions.count;
+assert.ok(meanTravel > 0.12 && meanTravel < 1, `two seconds of dust drift should be noticeable but restrained (${meanTravel})`);
+
 // Escaping the cone would make bright particles float in the unlit background.
 const axis = spotlight.target.position.clone().sub(spotlight.position).normalize();
 const offset = new Vector3();
-for (let time = 1000; time <= 60000; time += 1000) {
+for (let time = 3000; time <= 60000; time += 1000) {
   dust.update(time, 1, false);
   for (let index = 0; index < positions.count; index++) {
     offset.fromBufferAttribute(positions, index).sub(spotlight.position);
