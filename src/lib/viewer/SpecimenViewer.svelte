@@ -49,6 +49,7 @@
   let playButton = $state<HTMLButtonElement>();
   let retryButton = $state<HTMLButtonElement>();
   let studyPanel = $state<HTMLDivElement>();
+  let transportPanel = $state<HTMLDivElement>();
   let exploreControls: HTMLDivElement | undefined;
   let focusGeneration = 0;
   let incoming = $state<StudyHandoff | null>(null);
@@ -87,7 +88,6 @@
     studyState?.chapter === 'world' ? m.studyChapterWorld() : ''
   );
   const chapters = $derived(recording.version?.chapters ?? []);
-  const chapterIndex = $derived(chapters.findIndex((chapter) => chapter.id === studyState?.chapter));
   const chapterLabels = $derived({
     meet: m.studyChapterMeet(), scale: m.studyChapterScale(),
     armor: m.studyChapterArmor(), world: m.studyChapterWorld()
@@ -153,10 +153,11 @@
     if (moveFocus) void focusStudyControl();
   }
   function receiveStudy(next: StudySnapshot): void {
-    const returnFocus = !!studyState?.active && !next.active && !!studyPanel?.contains(document.activeElement);
+    const returnFocus = !!studyState?.active && !next.active &&
+      (!!studyPanel?.contains(document.activeElement) || !!transportPanel?.contains(document.activeElement));
     const focused = document.activeElement;
     const moveErrorFocus = next.phase === 'error' && !!focused &&
-      (focused === playButton || !!note?.contains(focused) || !!exploreControls?.contains(focused));
+      (!!transportPanel?.contains(focused) || !!note?.contains(focused) || !!exploreControls?.contains(focused));
     studyState = next;
     viewer?.setCinema(cinema);
     if (moveErrorFocus) void focusStudyControl();
@@ -247,7 +248,7 @@
         viewer = createSpecimenViewer(container, modelUrl, (nextState) => {
           if (disposed) return;
           if (nextState !== 'ready') {
-            if (studyPanel?.contains(document.activeElement)) section?.focus({ preventScroll: true });
+            if (studyPanel?.contains(document.activeElement) || transportPanel?.contains(document.activeElement)) section?.focus({ preventScroll: true });
             study?.dispose();
             studyState = null;
             focusGeneration++;
@@ -341,6 +342,24 @@
       {/key}
     {/if}
   </div>
+  {#if studying && studyState}
+    <div class="study-transport" bind:this={transportPanel}>
+      <div class="study-playback" role="group" aria-label={m.studyControls()}>
+        <button type="button" disabled={!!studyState.error || leaving} onclick={() => study?.skip(-5)}>{m.studyBackFive()}</button>
+        <button type="button" class="study-play" bind:this={playButton} onclick={togglePlayback} disabled={studyState.phase === 'error' || leaving}>
+          {studyState.requestedPlaying ? m.studyPause() : m.studyPlay()}
+        </button>
+        <button type="button" disabled={!!studyState.error || leaving} onclick={() => study?.skip(5)}>{m.studyForwardFive()}</button>
+      </div>
+      <div class="study-controls">
+        {#if studyState.phase === 'error'}
+          <button type="button" bind:this={retryButton} onclick={retryStudy}>{m.studyRetry()}</button>
+        {/if}
+        <button type="button" disabled={leaving} aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
+        <button type="button" onclick={() => study?.exit()}>{m.studyExit()}</button>
+      </div>
+    </div>
+  {/if}
   <span class="visually-hidden anatomy-announcement" aria-live="polite" aria-atomic="true">{announcement}</span>
   <p class="viewer-status" aria-live="polite" aria-atomic="true">
     {#if viewerState === 'loading'}
@@ -381,16 +400,6 @@
       {#if studyState.captionsEnabled}
         <p class="study-caption" lang={recording.version?.language}>{studyState.caption}</p>
       {/if}
-      <div class="study-controls" role="group" aria-label={m.studyControls()}>
-        <button type="button" bind:this={playButton} onclick={togglePlayback} disabled={studyState.phase === 'error' || leaving}>
-          {studyState.requestedPlaying ? m.studyPause() : m.studyPlay()}
-        </button>
-        {#if studyState.phase === 'error'}
-          <button type="button" bind:this={retryButton} onclick={retryStudy}>{m.studyRetry()}</button>
-        {/if}
-        <button type="button" disabled={leaving} aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
-        <button type="button" onclick={() => study?.exit()}>{m.studyExit()}</button>
-      </div>
       <div class="study-timeline">
         <label for={`${id}-study-seek`}>{m.studySeek()}</label>
         <span class="study-time">{clock(studyState.time)} / {clock(studyState.duration)}</span>
@@ -403,12 +412,6 @@
           <button type="button" aria-current={studyState.chapter === chapter.id ? 'step' : undefined}
             disabled={!!studyState.error || leaving} onclick={() => study?.seek(chapter.start)}>{chapterLabels[chapter.id]}</button>
         {/each}
-      </div>
-      <div class="study-controls">
-        <button type="button" disabled={!!studyState.error || leaving || chapterIndex <= 0}
-          onclick={() => study?.moveChapter(-1)}>{m.studyPrevious()}</button>
-        <button type="button" disabled={!!studyState.error || leaving || chapterIndex < 0 || chapterIndex >= chapters.length - 1}
-          onclick={() => study?.moveChapter(1)}>{m.studyNext()}</button>
       </div>
     </div>
   {:else}

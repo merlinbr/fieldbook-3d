@@ -4,7 +4,7 @@ import {
 } from 'three';
 import type { SpotLight } from 'three';
 
-const COUNT = 48;
+const COUNT = 64;
 
 // Source-space geometry sits beside the spotlight under the calibrated specimen wrapper.
 export function createStudyDust(spotlight: SpotLight) {
@@ -27,7 +27,7 @@ export function createStudyDust(spotlight: SpotLight) {
     colors.setXYZ(index, brightness, brightness, brightness);
     return {
       angle: random(2) * Math.PI * 2, depth: 0.55 + random(3) * 0.45,
-      radial: 0.12 + random(4) * 0.65, speed: 0.012 + random(5) * 0.008
+      radial: 0.12 + random(4) * 0.65, speed: 0.07 + random(5) * 0.05
     };
   });
   const geometry = new BufferGeometry();
@@ -61,8 +61,8 @@ export function createStudyDust(spotlight: SpotLight) {
   function move(): void {
     seeds.forEach((seed, index) => {
       const angle = seed.angle + elapsed * seed.speed;
-      const depth = distance * (seed.depth + 0.035 * Math.sin(seed.angle + elapsed * 0.12));
-      const radius = depth * spread * seed.radial;
+      const depth = distance * (seed.depth + 0.035 * Math.sin(seed.angle + elapsed * 0.32));
+      const radius = depth * spread * (seed.radial + 0.035 * Math.sin(seed.angle * 2 + elapsed * 0.45));
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
       positions.setXYZ(index,
