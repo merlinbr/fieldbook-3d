@@ -922,7 +922,7 @@ specimenWrapper.updateWorldMatrix(true, true);
 const sourceBounds = new Box3().setFromObject(specimenWrapper, true);
 let projection;
 let projectionCount = 0;
-const comparison = createScaleComparison(sourceBounds, [specimenMesh], (next) => {
+const comparison = createScaleComparison(sourceBounds, [specimenMesh], config.scale, (next) => {
   projection = next;
   ++projectionCount;
 });
@@ -952,6 +952,7 @@ assert.ok(Math.abs(guidePositions.getZ(0) - humanBounds.max.z - 0.35) < 1e-6, 'g
 assert.throws(() => createScaleComparison(
   new Box3(new Vector3(1, 2, 3), new Vector3(1, 4, 5)),
   [specimenMesh],
+  config.scale,
   () => {}
 ), RangeError, 'zero head-to-tail extent is rejected');
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import type { AnatomyId, SpecimenViewerConfig, SpecimenViewerText, ViewerStudy } from '../specimens/specimen-config.ts';
   import { validateViewerInputs } from '../specimens/specimen-config.ts';
   import type { InspectionSnapshot } from './anatomy-inspection.ts';
@@ -57,6 +58,8 @@
   let incoming = $state<StudyHandoff | null>(null);
   let handoffFailed = $state(false);
   const studying = $derived(studyState?.active ?? false);
+  const standaloneScale = $derived(!studying && scaleProjection.visible);
+  const scaleLength = $derived(config.scale ? new Intl.NumberFormat(getLocale()).format(config.scale.lengthMetres) : '');
   const leaving = $derived(studyState?.phase === 'leaving');
   const cinema = $derived(studying && !!studyState?.requestedPlaying && !studyState?.error && !leaving);
   const narrationLanguage = $derived(recording.version?.language === 'de' ? m.studyGerman() : m.studyEnglish());
@@ -65,7 +68,7 @@
   const canStart = $derived(guided && viewerState === 'ready' && scaleReady && targetsReady && !!recording.version);
   const readiness = $derived(
     !guided ? '' : viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :
-    !targetsReady ? m.studyTargets() : !scaleReady ? m.studyCalibration() : recording.error === 'data' ? m.studyData() :
+    !targetsReady ? m.studyTargets() : !scaleReady ? (config.scale ? m.studyCalibration({ length: scaleLength }) : m.studyScaleUnavailable()) : recording.error === 'data' ? m.studyData() :
     !recording.version ? m.studyMissing() : incoming ? m.studyHandoffLoading() : handoffFailed ? m.studyHandoffInvalid() : m.studyReady()
   );
   const studyStatus = $derived.by(() => {
@@ -314,7 +317,7 @@
           </span>
         {/if}
       {/each}
-      {#if studyState?.chapter === 'scale' && scaleProjection.visible}
+      {#if scaleProjection.visible}
         <svg class="scale-leaders" aria-hidden="true">
           {#if scaleProjection.length.visible}
             <line x1={scaleProjection.length.x} y1={scaleProjection.length.y} x2={scaleProjection.length.x + 16} y2={scaleProjection.length.y - 16} />
@@ -385,7 +388,7 @@
       <p class="study-status" aria-live="polite" aria-atomic="true">{studyStatus}{chapterStatus ? ` — ${chapterStatus}` : ''}</p>
       {#if studyState.chapter === 'scale'}
         <div class="scale-legend" role="group" aria-label={m.studyScaleLegend()}>
-          <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen()}</p>
+          <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen({ length: scaleLength })}</p>
           <p><span aria-hidden="true">2</span>{m.studyScaleHuman()}</p>
         </div>
       {/if}
@@ -423,6 +426,12 @@
       {#if recording.version}<p>{narrationLanguage}</p>{/if}
     </div>
   {/if}
+  {#if standaloneScale}
+    <div class="scale-legend" role="group" aria-label={m.studyScaleLegend()}>
+      <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen({ length: scaleLength })}</p>
+      <p><span aria-hidden="true">2</span>{m.studyScaleHuman()}</p>
+    </div>
+  {/if}
   <div bind:this={exploreControls}>
   <div class="anatomy-controls" role="group" aria-label={m.inspectAnatomy()}>
     {#each regionIds as region}
@@ -430,6 +439,9 @@
     {/each}
   </div>
   <div class="viewer-controls">
+    {#if config.scale}
+      <button type="button" disabled={studying || viewerState !== 'ready' || !scaleReady} aria-pressed={standaloneScale} onclick={() => viewer?.setScaleVisible(!standaloneScale)}>{m.studyScaleLegend()}</button>
+    {/if}
     <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.zoom(1.2)}>{m.zoomIn()}</button>
     <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.zoom(1 / 1.2)}>{m.zoomOut()}</button>
     <button type="button" disabled={!canInspect || viewerState !== 'ready'} onclick={() => viewer?.reset()}>{m.reset()}</button>

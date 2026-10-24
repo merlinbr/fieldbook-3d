@@ -45,6 +45,8 @@ export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
 export type ViewerHandle = {
   calibrationReady: boolean;
+  readonly scaleVisible: boolean;
+  setScaleVisible(visible: boolean): boolean;
   reset(): void;
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
@@ -158,6 +160,8 @@ export function createSpecimenViewer(
   let studyTargetsReady = false;
   let calibrationReady = false;
   let studyActive = false;
+  let calibrationActive = false;
+  let standaloneScale = false;
   let studyFrame: (() => void) | null = null;
   let currentStudyFrame: Readonly<StudyFrame> | null = null;
   const heroPosition = new Vector3();
@@ -368,9 +372,17 @@ export function createSpecimenViewer(
   }
 
   function beginStudy(): boolean {
-    if (config.study.kind !== 'guided' || disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
-      !studyTargetsReady || !calibrationReady || studyActive) return false;
-    ownCamera(false);
+    if (config.study.kind !== 'guided' || !studyTargetsReady || studyActive) return false;
+    if (standaloneScale) restoreCalibration();
+    return beginCalibration(true);
+  }
+
+  function beginCalibration(forStudy: boolean): boolean {
+    if (disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
+      !calibrationReady || calibrationActive) return false;
+    // Settle damping before saving; standalone comparison preserves inspection.
+    if (forStudy) ownCamera(false);
+    else { controls.enableDamping = false; controls.update(); }
     savedPosition.copy(camera.position);
     savedTarget.copy(controls.target);
     savedZoom = camera.zoom;
@@ -433,10 +445,12 @@ export function createSpecimenViewer(
     updateFrustum();
     key.shadow.camera.updateProjectionMatrix();
     controls.update();
-    studyActive = true;
+    calibrationActive = true;
+    studyActive = forStudy;
+    standaloneScale = !forStudy;
     try {
       calculateScaleFit();
-      calculateRegionFits();
+      if (forStudy) calculateRegionFits();
       const shadowExtent = scaleSphere.radius * 1.6;
       key.target.position.copy(scaleTarget);
       fill.target.position.copy(scaleTarget);
@@ -457,22 +471,40 @@ export function createSpecimenViewer(
       updateFrustum();
       controls.update();
       camera.updateMatrixWorld();
-      comparison.setVisible(false);
+      if (forStudy) comparison.setVisible(false);
+      else {
+        frameScaleComparison();
+        comparison.setVisible(true);
+        controls.enableDamping = !motionPreference?.matches;
+      }
       return true;
     } catch {
       calibrationReady = false;
       handle.calibrationReady = false;
-      restoreStudy();
+      restoreCalibration();
       return false;
     }
   }
 
-  function restoreStudy(): void {
-    if (!studyActive || !controls || !specimenWrapper || !comparison) return;
+  function frameScaleComparison(): void {
+    if (!controls) return;
+    camera.position.copy(scalePosition);
+    controls.target.copy(scaleTarget);
+    camera.zoom = studyZoom();
+    controls.minZoom = Math.min(savedControlsMinZoom, camera.zoom);
+    controls.maxZoom = Math.max(savedControlsMaxZoom, camera.zoom);
+    camera.updateProjectionMatrix();
+    controls.update();
+    camera.updateMatrixWorld();
+  }
+
+  function restoreCalibration(): void {
+    if (!calibrationActive || !controls || !specimenWrapper || !comparison) return;
     cancelComposition();
     comparison.setVisible(false);
     emphasis?.clear();
-    ownCamera(false);
+    if (studyActive) ownCamera(false);
+    else { controls.enableDamping = false; controls.update(); }
     specimenWrapper.position.copy(savedWrapperPosition);
     specimenWrapper.scale.copy(savedWrapperScale);
     specimenWrapper.quaternion.copy(savedWrapperQuaternion);
@@ -503,6 +535,8 @@ export function createSpecimenViewer(
     controls.update();
     camera.updateMatrixWorld();
     studyActive = false;
+    standaloneScale = false;
+    calibrationActive = false;
     currentStudyFrame = null;
     presentation?.setActive(false, performance.now(), motionPreference?.matches ?? false);
     ownCamera(true);
@@ -558,7 +592,7 @@ export function createSpecimenViewer(
     },
     exit() {
       studyFrame = null;
-      restoreStudy();
+      if (studyActive) restoreCalibration();
     },
     setFrame(callback) { studyFrame = disposed ? null : callback; }
   };
@@ -604,6 +638,9 @@ export function createSpecimenViewer(
           applyGuidedPose(currentStudyFrame);
         }
       }
+    } else if (standaloneScale) {
+      calculateScaleFit();
+      frameScaleComparison();
     }
   }
 
@@ -644,6 +681,7 @@ export function createSpecimenViewer(
 
   function reset(): void {
     if (disposed || !manual || state !== 'ready' || !controls) return;
+    if (standaloneScale) restoreCalibration();
     const damping = controls.enableDamping;
     controls.enableDamping = false;
     controls.update();
@@ -692,7 +730,7 @@ export function createSpecimenViewer(
 
   function dispose(): void {
     if (disposed) return;
-    if (studyActive) restoreStudy();
+    if (calibrationActive) restoreCalibration();
     disposed = true;
     calibrationReady = false;
     handle.calibrationReady = false;
@@ -741,6 +779,14 @@ export function createSpecimenViewer(
 
   handle = {
     calibrationReady: false,
+    get scaleVisible() { return standaloneScale; },
+    setScaleVisible(visible) {
+      if (disposed || state !== 'ready' || studyActive || !calibrationReady) return false;
+      if (visible === standaloneScale) return true;
+      if (visible) return beginCalibration(false);
+      restoreCalibration();
+      return true;
+    },
     reset, zoom, orbit, dispose, study,
     setCinema(active) {
       if (!disposed) presentation?.setActive(active && studyActive, performance.now(), motionPreference?.matches ?? false);
@@ -756,6 +802,7 @@ export function createSpecimenViewer(
     },
     restoreExploration(view) {
       if (disposed || state !== 'ready' || studyActive || !controls || !validExplorationView(view)) return false;
+      if (standaloneScale) restoreCalibration();
       const damping = controls.enableDamping;
       controls.enableDamping = false;
       controls.update();
@@ -870,10 +917,12 @@ export function createSpecimenViewer(
             wrapper.add(dust.root);
           }
           try {
-            comparison = createScaleComparison(bounds, specimenMeshes, onScale);
-            scene.add(comparison.root);
-            calibrationReady = true;
-            handle.calibrationReady = true;
+            if (config.scale) {
+              comparison = createScaleComparison(bounds, specimenMeshes, config.scale, onScale);
+              scene.add(comparison.root);
+              calibrationReady = true;
+              handle.calibrationReady = true;
+            }
           } catch {
             calibrationReady = false;
             handle.calibrationReady = false;
