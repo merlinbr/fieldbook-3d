@@ -29,9 +29,27 @@ npm run dev
 
 Open `/en/specimens/ankylosaurus/` or `/de/specimens/ankylosaurus/`. `/` redirects to the English exhibit and contains a fallback link. Locale links reload the document. During a study, a validated destination-link query transfers paused context and is consumed without another reload. No saved preferences, cookies, or language detection are required.
 
-The ignored `media-dev/ankylosaurus.glb` is a real export of the supplied example, not a generated substitute in the application. It is present in this local workspace but deliberately absent from Git. A fresh checkout needs that asset regenerated or a rights-cleared externally hosted model URL. See [asset provenance and regeneration](docs/assets/ankylosaurus.md). Keep the supplied `example project/low-poly/` and its dependencies unchanged.
+The ignored `media-dev/ankylosaurus.glb` is a real export of the supplied example, not a generated substitute in the application. It is present in this local workspace but deliberately absent from Git. A fresh checkout needs that asset regenerated or a rights-cleared externally hosted model URL. See [asset provenance and regeneration](docs/assets/ankylosaurus.md). Preserve the supplied Ankylosaurus source and example dependencies. The approved [Stegosaurus model](#stegosaurus-model-preview) is tracked separately from the rest of the local example; it does not change the Ankylosaurus export or add an application route.
 
 `npm run media:dev` serves the fixed model and optional `media-dev/ankylosaurus-en.mp3` / `media-dev/ankylosaurus-de.mp3` endpoints on `http://127.0.0.1:5194`, with GET/HEAD, byte ranges, and CORS. Missing audio returns 404. It does not serve application files or expose a directory listing. This workspace's ignored `.env` is configured with both complete versions. For a fresh checkout, set `PUBLIC_ANKYLOSAURUS_STUDY_VERSION` to the [complete English JSON](docs/assets/ankylosaurus-narration.en.json), not just its URL; see [English configuration](docs/assets/ankylosaurus-narration.md#configure-the-approved-recording). Optionally set `PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE` to the [complete German JSON](docs/assets/ankylosaurus-narration.de.json); see [German intake and configuration](docs/assets/ankylosaurus-narration.de.md). Absent German configuration uses visibly labeled English narration with English captions in the German interface. Invalid configured data or a recording error stays explicit. No default or fabricated timings are used. Keep the media process running; restart an older responder to load both audio routes.
+
+## Stegosaurus model preview
+
+The approved low-poly `Stegosaurus stenops` source is narrowly tracked under `example project/low-poly/`: `stegosaurus.js`, `model-geometry.js`, and `walk-cycle.js`. The rest of that local example collection remains ignored. The standalone check below carries the Stegosaurus geometry/anatomy/gait assertions from the local collection check; it does not require the other dinosaur or environment sources.
+
+From a fresh checkout, using Node 24 and the root lockfile:
+
+```sh
+npm ci
+npm run check:stegosaurus
+npm run preview:stegosaurus
+```
+
+Open the URL printed by Vite. Use the side, opposite-side, three-quarter, and top buttons, drag to orbit, scroll to zoom, or toggle Walk. The preview starts at rest, uses a neutral ground without obstructing scenery, and needs no `.env`, media server, GLB, or nested example installation. `npm run build:stegosaurus` builds this standalone preview to ignored `dist/stegosaurus-preview/`; it is not part of the application build.
+
+The model uses **2,976 of 3,000 triangles**: a fuller torso and neck transition, substantial hips and planted feet, nineteen thin staggered dorsal plates, four tail spikes, thirty-six shallow flank scales, brows, and nostrils. Narrow plate roots, tapered crowns, varied lean, and related tan shades keep overlapping plates distinct. Materials retain the olive/cream/tan palette and flat shading. Neck and tail plates follow their respective pivots; the check covers finite/nondegenerate geometry, alternating plates, ground clearance, three supporting feet during a full gait, and return to rest.
+
+The nineteen-plate/four-spike count references the Natural History Museum's [S. stenops specimen, Sophie](https://www.nhm.ac.uk/press-office/press-releases/world_s-most-complete-stegosaurus-goes-on-show.html). Proportions, colors, skin-scale placement, and other soft tissue are artistic choices, not a validated anatomical restoration. This is procedural model source only: no GLB publication, application route, narration, or scientific scale calibration is included. Export/media delivery and exhibit integration are tracked separately in #14–#16.
 
 ## Check and build
 

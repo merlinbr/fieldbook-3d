@@ -13,6 +13,9 @@
     "check:camera": "node checks/camera-fit.mjs",
     "check:anatomy": "node checks/anatomy-input.mjs && node checks/anatomy-inspection.mjs",
     "check:study": "node checks/field-study.mjs && node checks/study-presentation.mjs && node checks/study-dust.mjs",
+    "check:stegosaurus": "node checks/stegosaurus.mjs",
+    "preview:stegosaurus": "vite --config tools/stegosaurus-preview/vite.config.js",
+    "build:stegosaurus": "vite build --config tools/stegosaurus-preview/vite.config.js",
     "media:dev": "node tools/serve-dev-media.mjs"
   },
   "dependencies": { "three": "0.186.1" },
