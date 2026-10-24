@@ -368,7 +368,7 @@ export function createSpecimenViewer(
   }
 
   function beginStudy(): boolean {
-    if (disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
+    if (config.study.kind !== 'guided' || disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
       !studyTargetsReady || !calibrationReady || studyActive) return false;
     ownCamera(false);
     savedPosition.copy(camera.position);
@@ -865,8 +865,10 @@ export function createSpecimenViewer(
           spotlight.position.copy(sphere.center).add(new Vector3(-0.7, 2.2, 1.5).multiplyScalar(radius));
           spotlight.target.position.copy(sphere.center);
           wrapper.add(spotlight, spotlight.target);
-          dust = createStudyDust(spotlight);
-          wrapper.add(dust.root);
+          if (config.study.kind === 'guided') {
+            dust = createStudyDust(spotlight);
+            wrapper.add(dust.root);
+          }
           try {
             comparison = createScaleComparison(bounds, specimenMeshes, onScale);
             scene.add(comparison.root);
@@ -887,7 +889,7 @@ export function createSpecimenViewer(
               plinths.push(object.material);
             }
           });
-          presentation = createStudyPresentation({
+          if (dust) presentation = createStudyPresentation({
             background: scene.background as Color, hemisphere, key, fill, spotlight, plinths, dust
           });
           key.position.copy(sphere.center).add(new Vector3(-2, 4, 3).multiplyScalar(radius));

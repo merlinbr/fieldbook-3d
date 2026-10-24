@@ -8,7 +8,8 @@
   import type { ViewerHandle, ViewerState } from './specimen-viewer.ts';
   import { createFieldStudy } from './field-study.ts';
   import type { StudyHandle, StudySnapshot } from './field-study.ts';
-  import { encodeStudyHandoff, parseStudyHandoff, STUDY_QUERY } from './study-handoff.ts';
+  import { encodeStudyHandoff, STUDY_QUERY } from './study-handoff.ts';
+  import { resolveStudyContext } from './viewer-study.ts';
   import type { StudyHandoff } from './study-handoff.ts';
 
   let { config, text, study: studyInput }: {
@@ -19,7 +20,7 @@
   const anatomy = $derived(text.anatomy);
   const regionIds = $derived(config.regions.map(region => region.id));
   const recording = $derived(studyInput.kind === 'guided' ? studyInput.recording : { version: null, error: null });
-  const versions = $derived(studyInput.kind === 'guided' ? studyInput.versions : []);
+  const guided = $derived(config.study.kind === 'guided' && studyInput.kind === 'guided');
   const id = $props.id();
   const instructionsId = `${id}-instructions`;
   let container: HTMLDivElement | undefined;
@@ -60,10 +61,10 @@
   const cinema = $derived(studying && !!studyState?.requestedPlaying && !studyState?.error && !leaving);
   const narrationLanguage = $derived(recording.version?.language === 'de' ? m.studyGerman() : m.studyEnglish());
   const canInspect = $derived(!studying || studyState?.phase === 'paused');
-  const targetsReady = $derived(['armor', 'tailClub'].every((id) => inspection?.regions.find((region) => region.id === id)?.available));
-  const canStart = $derived(viewerState === 'ready' && scaleReady && targetsReady && !!recording.version);
+  const targetsReady = $derived(config.study.kind === 'guided' && Object.values(config.study.targets).every(target => inspection?.regions.find(region => region.id === target.regionId)?.available));
+  const canStart = $derived(guided && viewerState === 'ready' && scaleReady && targetsReady && !!recording.version);
   const readiness = $derived(
-    viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :
+    !guided ? '' : viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :
     !targetsReady ? m.studyTargets() : !scaleReady ? m.studyCalibration() : recording.error === 'data' ? m.studyData() :
     !recording.version ? m.studyMissing() : incoming ? m.studyHandoffLoading() : handoffFailed ? m.studyHandoffInvalid() : m.studyReady()
   );
@@ -116,7 +117,7 @@
   export function prepareLanguageLink(link: HTMLAnchorElement): void {
     const destination = new URL(link.href);
     destination.searchParams.delete(STUDY_QUERY);
-    if (studyState?.active && recording.version) {
+    if (guided && config.id === 'ankylosaurus' && studyState?.active && recording.version) {
       const view = viewer?.savedExploration();
       const position = fieldStudy?.transfer();
       if (view && position) destination.searchParams.set(STUDY_QUERY, encodeStudyHandoff({
@@ -227,9 +228,7 @@
     const url = new URL(window.location.href);
     const contexts = url.searchParams.getAll(STUDY_QUERY);
     if (contexts.length) {
-      incoming = contexts.length === 1 && recording.version
-        ? parseStudyHandoff(contexts[0], versions, recording.version) : null;
-      handoffFailed = !incoming;
+      ({ incoming, handoffFailed } = resolveStudyContext(config, studyInput, contexts));
       url.searchParams.delete(STUDY_QUERY);
       window.history.replaceState(window.history.state, '', url);
     }
@@ -243,10 +242,11 @@
     section?.addEventListener('keydown', keydown);
     section?.addEventListener('pointerdown', focusCanvas);
     async function mountViewer() {
+      try { validateViewerInputs(config, text, studyInput); }
+      catch { viewerState = 'error'; return; }
       try {
         const { createSpecimenViewer } = await import('./specimen-viewer.ts');
         if (disposed || !container) return;
-        validateViewerInputs(config, text, studyInput);
         viewer = createSpecimenViewer(container, config, (nextState) => {
           if (disposed) return;
           if (nextState !== 'ready') {
@@ -268,7 +268,7 @@
           scaleProjection = snapshot;
           if (viewerState === 'ready') scaleReady = !!viewer?.calibrationReady;
         });
-        if (recording.version && viewerState !== 'error' && viewerState !== 'unavailable') {
+        if (guided && recording.version && viewerState !== 'error' && viewerState !== 'unavailable') {
           fieldStudy = createFieldStudy(recording.version, viewer.study, receiveStudy);
         }
         const canvas = container.querySelector('canvas');
@@ -416,7 +416,7 @@
         {/each}
       </div>
     </div>
-  {:else}
+  {:else if guided}
     <div class="study-entry">
       <button type="button" bind:this={startButton} disabled={!canStart} aria-describedby={`${id}-study-readiness`} onclick={startStudy}>{m.startStudy()}</button>
       <p id={`${id}-study-readiness`} aria-live="polite" aria-atomic="true">{readiness}</p>
