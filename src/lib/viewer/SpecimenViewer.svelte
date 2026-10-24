@@ -2,6 +2,8 @@
   import { onMount, tick } from 'svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import type { AnatomyId, SpecimenViewerConfig, SpecimenViewerText, ViewerStudy } from '../specimens/specimen-config.ts';
   import { validateViewerInputs } from '../specimens/specimen-config.ts';
   import type { InspectionSnapshot } from './anatomy-inspection.ts';
@@ -29,7 +31,7 @@
   let section: HTMLElement | undefined;
   let note = $state<HTMLElement>();
   let observedNote: HTMLElement | undefined;
-  const buttons: Partial<Record<AnatomyId, HTMLButtonElement>> = {};
+  const buttons = $state<Partial<Record<AnatomyId, HTMLButtonElement>>>({});
   let viewer: ViewerHandle | undefined;
   let observer: ResizeObserver | undefined;
   let alive = false;
@@ -233,7 +235,7 @@
     if (contexts.length) {
       ({ incoming, handoffFailed } = resolveStudyContext(config, studyInput, contexts));
       url.searchParams.delete(STUDY_QUERY);
-      window.history.replaceState(window.history.state, '', url);
+      void goto(url, { state: page.state, shallow: true, replace: true });
     }
     let disposed = false;
     observer = new ResizeObserver(measure);

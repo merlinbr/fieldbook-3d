@@ -1,6 +1,6 @@
 # Specimen-configurable viewer
 
-Status: proposed design for user review; implementation has not started.
+Status: design and plan approved by the user on 2026-10-24; implemented on `codex/issue-15-viewer-config`. Verification evidence is recorded in the implementation plan.
 
 Source: [issue #15](https://github.com/merlinbr/fieldbook-3d/issues/15). Inspected against main `e3debb4` on 2026-10-24. #14 is merged; #16 owns the localized Stegosaurus exhibit and its represented length.
 
@@ -8,7 +8,7 @@ Source: [issue #15](https://github.com/merlinbr/fieldbook-3d/issues/15). Inspect
 
 Let the existing viewer explore different specimens with anatomically honest regions, an explicitly supplied scale, and an explicit choice between guided study and exploration only. Preserve the existing Ankylosaurus exhibit, published study JSON, and English/German paused language handoff. Keep one viewer and migrate all affected callers without compatibility aliases.
 
-The issue supplies the requirements. This design additionally proposes a minimal localized scale-comparison toggle in exploration, because the existing comparison is accessible only through a guided study. That proposal is part of this review. It permits checking scale for a specimen with no recording without adding study controls or a new presentation layout.
+The issue supplies the requirements. The approved design adds a minimal localized scale-comparison toggle in exploration, because the former comparison was accessible only through a guided study. It permits checking scale for a specimen with no recording without adding study controls or a new presentation layout.
 
 No new exhibit route, production Stegosaurus content, represented Stegosaurus length, recording, dependency, model redesign, or production upload belongs here. Temporary browser fixtures are removed before delivery.
 
