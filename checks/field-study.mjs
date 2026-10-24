@@ -5,7 +5,8 @@ import * as studyData from '../src/lib/viewer/study-data.ts';
 import { createFieldStudy, evaluateStudyFrame } from '../src/lib/viewer/field-study.ts';
 import { Box3, BoxGeometry, Color, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, OrthographicCamera, Scene, Vector3 } from 'three';
 import { createScaleComparison } from '../src/lib/viewer/scale-comparison.ts';
-import { anatomyRegionMeshes } from '../src/lib/viewer/anatomy-inspection.ts';
+import { resolveAnatomyRegions, resolveMeshes } from '../src/lib/viewer/anatomy-regions.ts';
+import { createAnkylosaurusConfig } from '../src/lib/specimens/ankylosaurus-config.ts';
 import { createStudyEmphasis } from '../src/lib/viewer/study-emphasis.ts';
 
 // In-memory boundary inputs only: not production timings or a substitute for narrated acceptance.
@@ -839,7 +840,12 @@ headGroup.add(headMesh);
 const clubMesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: '#777777' }));
 clubMesh.name = 'clubMesh';
 armorModel.add(armorGroup, bodyMesh, legMesh, headGroup, clubMesh);
-const regions = (id) => anatomyRegionMeshes(armorModel, id);
+const config = createAnkylosaurusConfig('https://example.org/model.glb');
+const regions = (id) => {
+  const target = config.study.targets[id];
+  const region = resolveAnatomyRegions(armorModel, config.regions).find(r => r.id === id);
+  return target ? (region?.available ? resolveMeshes(armorModel, target.emphasis) : []) : region.highlightMeshes;
+};
 assert.deepEqual(regions('armor'), [plateA, plateB, bodyMesh], 'armor includes plates and upper-torso body mapping');
 assert.deepEqual(regions('head'), [headMesh]);
 assert.deepEqual(regions('tailClub'), [clubMesh]);
@@ -847,9 +853,9 @@ const unavailableArmorModel = new Group();
 const unavailableBody = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
 unavailableBody.name = 'bodyMesh';
 unavailableArmorModel.add(unavailableBody);
-assert.deepEqual(anatomyRegionMeshes(unavailableArmorModel, 'armor'), [], 'body mapping requires armor plate availability');
+assert.equal(resolveAnatomyRegions(unavailableArmorModel, config.regions).find(r => r.id === 'armor').available, false, 'body mapping requires armor plate availability');
 
-const emphasis = createStudyEmphasis(armorModel);
+const emphasis = createStudyEmphasis(armorModel, { armor: regions('armor'), tailClub: regions('tailClub') });
 const originalMaterials = new Map(
   [plateA, plateB, bodyMesh, legMesh, headMesh, clubMesh].map((mesh) => [mesh, mesh.material])
 );

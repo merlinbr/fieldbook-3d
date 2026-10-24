@@ -1,24 +1,25 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { m } from '#lib/paraglide/messages.js';
-  import type { AnatomyText } from '#lib/specimens/ankylosaurus.ts';
-  import { ANATOMY_IDS } from './anatomy-input.ts';
-  import type { AnatomyId } from './anatomy-input.ts';
+  import type { AnatomyId, SpecimenViewerConfig, SpecimenViewerText, ViewerStudy } from '../specimens/specimen-config.ts';
+  import { validateViewerInputs } from '../specimens/specimen-config.ts';
   import type { InspectionSnapshot } from './anatomy-inspection.ts';
   import type { ScaleProjection } from './scale-comparison.ts';
   import type { ViewerHandle, ViewerState } from './specimen-viewer.ts';
   import { createFieldStudy } from './field-study.ts';
   import type { StudyHandle, StudySnapshot } from './field-study.ts';
-  import type { StudyVersion } from './study-data.ts';
   import { encodeStudyHandoff, parseStudyHandoff, STUDY_QUERY } from './study-handoff.ts';
   import type { StudyHandoff } from './study-handoff.ts';
 
-  let { modelUrl, anatomy, recording, versions }: {
-    modelUrl: string;
-    anatomy: AnatomyText;
-    recording: { version: StudyVersion | null; error: 'missing' | 'data' | null };
-    versions: readonly StudyVersion[];
+  let { config, text, study: studyInput }: {
+    config: SpecimenViewerConfig;
+    text: SpecimenViewerText;
+    study: ViewerStudy;
   } = $props();
+  const anatomy = $derived(text.anatomy);
+  const regionIds = $derived(config.regions.map(region => region.id));
+  const recording = $derived(studyInput.kind === 'guided' ? studyInput.recording : { version: null, error: null });
+  const versions = $derived(studyInput.kind === 'guided' ? studyInput.versions : []);
   const id = $props.id();
   const instructionsId = `${id}-instructions`;
   let container: HTMLDivElement | undefined;
@@ -43,7 +44,7 @@
   const announcement = $derived(selected ? `${anatomy[selected].heading}. ${anatomy[selected].body}` : '');
   let placement = $state({ x: 12, y: 12, docked: true });
   let leader = $state<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-  let study: StudyHandle | undefined;
+  let fieldStudy: StudyHandle | undefined;
   let studyState = $state<StudySnapshot | null>(null);
   let startButton = $state<HTMLButtonElement>();
   let playButton = $state<HTMLButtonElement>();
@@ -105,10 +106,10 @@
     }
   }
   function startStudy(): void {
-    if (!canStart || !study) return;
+    if (!canStart || !fieldStudy) return;
     incoming = null;
     handoffFailed = false;
-    study.start();
+    fieldStudy.start();
     void focusStudyControl();
   }
 
@@ -117,7 +118,7 @@
     destination.searchParams.delete(STUDY_QUERY);
     if (studyState?.active && recording.version) {
       const view = viewer?.savedExploration();
-      const position = study?.transfer();
+      const position = fieldStudy?.transfer();
       if (view && position) destination.searchParams.set(STUDY_QUERY, encodeStudyHandoff({
         specimen: 'ankylosaurus', version: recording.version.id, ...position, view
       }));
@@ -132,24 +133,24 @@
       handoffFailed = true;
       return;
     }
-    if (!canStart || !viewer || !study) return;
+    if (!canStart || !viewer || !fieldStudy) return;
     const context = incoming;
     incoming = null;
-    if (viewer.restoreExploration(context.view) && study.restore(context)) void focusStudyControl();
+    if (viewer.restoreExploration(context.view) && fieldStudy.restore(context)) void focusStudyControl();
     else handoffFailed = true;
   });
   function togglePlayback(): void {
-    if (studyState?.requestedPlaying) study?.pause();
+    if (studyState?.requestedPlaying) fieldStudy?.pause();
     else {
       const focused = document.activeElement;
       const moveFocus = !!focused && (!!note?.contains(focused) || !!exploreControls?.contains(focused));
-      study?.play();
+      fieldStudy?.play();
       if (moveFocus) void focusStudyControl();
     }
   }
   function retryStudy(): void {
     const moveFocus = document.activeElement === retryButton;
-    study?.retry();
+    fieldStudy?.retry();
     if (moveFocus) void focusStudyControl();
   }
   function receiveStudy(next: StudySnapshot): void {
@@ -245,11 +246,12 @@
       try {
         const { createSpecimenViewer } = await import('./specimen-viewer.ts');
         if (disposed || !container) return;
-        viewer = createSpecimenViewer(container, modelUrl, (nextState) => {
+        validateViewerInputs(config, text, studyInput);
+        viewer = createSpecimenViewer(container, config, (nextState) => {
           if (disposed) return;
           if (nextState !== 'ready') {
             if (studyPanel?.contains(document.activeElement) || transportPanel?.contains(document.activeElement)) section?.focus({ preventScroll: true });
-            study?.dispose();
+            fieldStudy?.dispose();
             studyState = null;
             focusGeneration++;
             restoreFocus(inspection?.selected ?? null, false);
@@ -267,17 +269,17 @@
           if (viewerState === 'ready') scaleReady = !!viewer?.calibrationReady;
         });
         if (recording.version && viewerState !== 'error' && viewerState !== 'unavailable') {
-          study = createFieldStudy(recording.version, viewer.study, receiveStudy);
+          fieldStudy = createFieldStudy(recording.version, viewer.study, receiveStudy);
         }
         const canvas = container.querySelector('canvas');
         if (canvas) {
           canvas.setAttribute('role', 'img');
-          canvas.setAttribute('aria-label', m.viewerLabel());
+          canvas.setAttribute('aria-label', text.viewerLabel);
           canvas.setAttribute('aria-describedby', instructionsId);
         }
       } catch {
         if (!disposed) { restoreFocus(selected, false); viewerState = 'unavailable'; inspection = null; }
-        study?.dispose();
+        fieldStudy?.dispose();
         studyState = null;
         viewer?.dispose();
       }
@@ -288,8 +290,8 @@
       alive = false;
       measureGeneration++;
       focusGeneration++;
-      study?.dispose();
-      study = undefined;
+      fieldStudy?.dispose();
+      fieldStudy = undefined;
       studyState = null;
       observer?.disconnect();
       section?.removeEventListener('keydown', keydown);
@@ -301,7 +303,7 @@
   });
 </script>
 
-<section class="specimen-viewer" class:cinema aria-label={m.viewerLabel()} tabindex="-1" bind:this={section}>
+<section class="specimen-viewer" class:cinema aria-label={text.viewerLabel} tabindex="-1" bind:this={section}>
   <div class="inspection-frame" bind:this={frame}>
     <div class="viewer-stage" bind:this={container} aria-busy={viewerState === 'loading'}>
       {#each inspection?.regions ?? [] as region (region.id)}
@@ -345,18 +347,18 @@
   {#if studying && studyState}
     <div class="study-transport" bind:this={transportPanel}>
       <div class="study-playback" role="group" aria-label={m.studyControls()}>
-        <button type="button" disabled={!!studyState.error || leaving} onclick={() => study?.skip(-5)}>{m.studyBackFive()}</button>
+        <button type="button" disabled={!!studyState.error || leaving} onclick={() => fieldStudy?.skip(-5)}>{m.studyBackFive()}</button>
         <button type="button" class="study-play" bind:this={playButton} onclick={togglePlayback} disabled={studyState.phase === 'error' || leaving}>
           {studyState.requestedPlaying ? m.studyPause() : m.studyPlay()}
         </button>
-        <button type="button" disabled={!!studyState.error || leaving} onclick={() => study?.skip(5)}>{m.studyForwardFive()}</button>
+        <button type="button" disabled={!!studyState.error || leaving} onclick={() => fieldStudy?.skip(5)}>{m.studyForwardFive()}</button>
       </div>
       <div class="study-controls">
         {#if studyState.phase === 'error'}
           <button type="button" bind:this={retryButton} onclick={retryStudy}>{m.studyRetry()}</button>
         {/if}
-        <button type="button" disabled={leaving} aria-pressed={studyState.captionsEnabled} onclick={() => study?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
-        <button type="button" onclick={() => study?.exit()}>{m.studyExit()}</button>
+        <button type="button" disabled={leaving} aria-pressed={studyState.captionsEnabled} onclick={() => fieldStudy?.setCaptions(!studyState?.captionsEnabled)}>{m.studyCaptions()}</button>
+        <button type="button" onclick={() => fieldStudy?.exit()}>{m.studyExit()}</button>
       </div>
     </div>
   {/if}
@@ -405,12 +407,12 @@
         <span class="study-time">{clock(studyState.time)} / {clock(studyState.duration)}</span>
         <input id={`${id}-study-seek`} type="range" min="0" max={studyState.duration} step="any"
           value={studyState.time} aria-valuetext={m.studySeekValue({ time: clock(studyState.time), duration: clock(studyState.duration) })}
-          disabled={!!studyState.error || leaving} oninput={(event) => study?.seek(event.currentTarget.valueAsNumber)} />
+          disabled={!!studyState.error || leaving} oninput={(event) => fieldStudy?.seek(event.currentTarget.valueAsNumber)} />
       </div>
       <div class="study-chapters" role="group" aria-label={m.studyChapters()}>
         {#each chapters as chapter}
           <button type="button" aria-current={studyState.chapter === chapter.id ? 'step' : undefined}
-            disabled={!!studyState.error || leaving} onclick={() => study?.seek(chapter.start)}>{chapterLabels[chapter.id]}</button>
+            disabled={!!studyState.error || leaving} onclick={() => fieldStudy?.seek(chapter.start)}>{chapterLabels[chapter.id]}</button>
         {/each}
       </div>
     </div>
@@ -423,7 +425,7 @@
   {/if}
   <div bind:this={exploreControls}>
   <div class="anatomy-controls" role="group" aria-label={m.inspectAnatomy()}>
-    {#each ANATOMY_IDS as region}
+    {#each regionIds as region}
       <button type="button" bind:this={buttons[region]} disabled={!canInspect || viewerState !== 'ready' || !inspection?.regions.find((p) => p.id === region)?.available} aria-pressed={selected === region} onclick={() => viewer?.selectAnatomy(region)}>{anatomy[region].label}</button>
     {/each}
   </div>

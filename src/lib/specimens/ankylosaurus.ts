@@ -1,9 +1,7 @@
 import { PUBLIC_ANKYLOSAURUS_MODEL_URL, PUBLIC_ANKYLOSAURUS_STUDY_VERSION, PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE } from '$app/env/public';
-import type { AnatomyId } from '../viewer/anatomy-input.ts';
+import type { AnatomyText } from './specimen-config.ts';
+import { createAnkylosaurusConfig } from './ankylosaurus-config.ts';
 import { resolveStudyVersion } from '../viewer/study-data.ts';
-
-export type AnatomyNote = { label: string; heading: string; body: string };
-export type AnatomyText = Record<AnatomyId, AnatomyNote>;
 
 const development = import.meta.env.MODE === 'development';
 const configuredUrl = PUBLIC_ANKYLOSAURUS_MODEL_URL;
@@ -42,13 +40,14 @@ const study = {
 export const ankylosaurus = {
   id: 'ankylosaurus',
   scientificName: 'Ankylosaurus magniventris',
-  modelUrl: modelUrl(),
+  config: createAnkylosaurusConfig(modelUrl()),
   study,
   versions: Object.values(study).map((recording) => recording.version).filter((version) => version !== null)
 } as const;
 
 export const ankylosaurusText = {
   en: {
+    viewerLabel: 'Interactive 3D Ankylosaurus specimen',
     name: 'Ankylosaurus',
     description: 'An armored dinosaur with a distinctive tail club.',
     reconstruction: 'A stylized reconstruction.',
@@ -59,6 +58,7 @@ export const ankylosaurusText = {
     } satisfies AnatomyText
   },
   de: {
+    viewerLabel: 'Interaktives 3D-Exemplar eines Ankylosaurus',
     name: 'Ankylosaurus',
     description: 'Ein gepanzerter Dinosaurier mit einer markanten Schwanzkeule.',
     reconstruction: 'Eine stilisierte Rekonstruktion.',

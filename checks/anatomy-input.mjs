@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createAnatomyInput } from '../src/lib/viewer/anatomy-input.ts';
 
-const input = createAnatomyInput();
+const input = createAnatomyInput(['armor', 'head', 'tailClub']);
 function release(id, x, y, inside, hit) {
   if (input.up(id, x, y, inside)) input.select(hit);
 }
@@ -47,4 +47,9 @@ assert.equal(input.selected, 'armor');
 assert.equal(input.select(null), true);
 assert.equal(input.selected, null);
 assert.equal(input.select(null), false);
+const stegosaurus = createAnatomyInput(['head', 'plates', 'spikes']);
+assert.equal(stegosaurus.select('plates'), true);
+assert.equal(stegosaurus.select('tailClub'), false, 'unknown species IDs must not be selected');
+assert.equal(stegosaurus.selected, 'plates');
+assert.equal(stegosaurus.select('spikes'), true);
 console.log('Anatomy selection and gesture assertions passed.');

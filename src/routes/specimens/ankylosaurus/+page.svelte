@@ -56,6 +56,6 @@
         <p class="reconstruction-note">{text.reconstruction}</p>
       </div>
     </div>
-    <SpecimenViewer bind:this={specimenViewer} modelUrl={ankylosaurus.modelUrl} anatomy={text.anatomy} recording={ankylosaurus.study[locale]} versions={ankylosaurus.versions} />
+    <SpecimenViewer bind:this={specimenViewer} config={ankylosaurus.config} {text} study={{ kind: 'guided', recording: ankylosaurus.study[locale], versions: ankylosaurus.versions }} />
   </main>
 </div>

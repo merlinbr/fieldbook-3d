@@ -1,13 +1,13 @@
-export const ANATOMY_IDS = ['armor', 'head', 'tailClub'] as const;
-export type AnatomyId = (typeof ANATOMY_IDS)[number];
+import type { AnatomyId } from '../specimens/specimen-config.ts';
 export type AnatomyHit = AnatomyId | null | undefined;
 
-export function createAnatomyInput() {
+export function createAnatomyInput(ids: readonly AnatomyId[]) {
+  const allowed = new Set(ids);
   let selected: AnatomyId | null = null;
   const pointers = new Map<number, { x: number; y: number }>();
   let blocked = false;
   function select(hit: AnatomyHit): boolean {
-    if (hit === undefined || hit === selected) return false;
+    if (hit === undefined || hit === selected || (hit !== null && !allowed.has(hit))) return false;
     selected = hit;
     return true;
   }

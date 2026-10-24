@@ -27,9 +27,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { orthographicHalfHeight } from './camera-fit.ts';
 import { validExplorationView } from './study-handoff.ts';
 import type { ExplorationView } from './study-handoff.ts';
-import { anatomyRegionBounds, createAnatomyInspection } from './anatomy-inspection.ts';
+import { createAnatomyInspection } from './anatomy-inspection.ts';
+import { resolveAnatomyRegions, resolveMeshes, regionBounds } from './anatomy-regions.ts';
+import type { ResolvedAnatomyRegion } from './anatomy-regions.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
-import type { AnatomyId } from './anatomy-input.ts';
+import type { AnatomyId, SpecimenViewerConfig } from '../specimens/specimen-config.ts';
+import { validateSpecimenConfig } from '../specimens/specimen-config.ts';
 import { createStudyEmphasis } from './study-emphasis.ts';
 import type { StudyEmphasis } from './study-emphasis.ts';
 import type { StudyFrame, StudyView } from './field-study.ts';
@@ -91,7 +94,7 @@ function disposeResources(roots: readonly Object3D[]): void {
 
 export function createSpecimenViewer(
   container: HTMLElement,
-  modelUrl: string,
+  config: SpecimenViewerConfig,
   onState: (state: ViewerState) => void,
   onInspection: (snapshot: InspectionSnapshot) => void,
   onScale: (snapshot: ScaleProjection) => void
@@ -115,6 +118,7 @@ export function createSpecimenViewer(
   let presentation: ReturnType<typeof createStudyPresentation> | undefined;
   let dust: StudyDust | undefined;
   let model: Object3D | undefined;
+  let resolvedRegions: readonly ResolvedAnatomyRegion[] = [];
   let modelScenes: Object3D[] = [];
   const scaleTarget = new Vector3();
   const scalePosition = new Vector3();
@@ -266,8 +270,13 @@ export function createSpecimenViewer(
 
   function calculateRegionFits(): void {
     if (!model || !controls) throw new RangeError('Specimen model is unavailable');
-    armorBounds.copy(anatomyRegionBounds(model, 'armor'));
-    tailClubBounds.copy(anatomyRegionBounds(model, 'tailClub'));
+    if (config.study.kind !== 'guided') throw new RangeError('Specimen has no guided study');
+    const targets = config.study.targets;
+    const armorRegion = resolvedRegions.find(region => region.id === targets.armor.regionId);
+    const tailRegion = resolvedRegions.find(region => region.id === targets.tailClub.regionId);
+    if (!armorRegion?.available || !tailRegion?.available) throw new RangeError('Study regions are unavailable');
+    armorBounds.copy(regionBounds(armorRegion));
+    tailClubBounds.copy(regionBounds(tailRegion));
     if (armorBounds.isEmpty() || tailClubBounds.isEmpty()) throw new RangeError('Study region bounds are unavailable');
     fitSavedPosition.copy(camera.position);
     fitSavedTarget.copy(controls.target);
@@ -800,8 +809,9 @@ export function createSpecimenViewer(
   }
 
   try {
+    validateSpecimenConfig(config);
     new GLTFLoader().load(
-      modelUrl,
+      config.modelUrl,
       (gltf) => {
         if (disposed) {
           disposeResources(gltf.scenes);
@@ -810,7 +820,14 @@ export function createSpecimenViewer(
         modelScenes = gltf.scenes;
         try {
           model = gltf.scene;
-          emphasis = createStudyEmphasis(model);
+          resolvedRegions = resolveAnatomyRegions(model, config.regions);
+          if (config.study.kind === 'guided') {
+            const targets = config.study.targets;
+            emphasis = createStudyEmphasis(model, {
+              armor: resolvedRegions.find(region => region.id === targets.armor.regionId)?.available ? resolveMeshes(model, targets.armor.emphasis) : [],
+              tailClub: resolvedRegions.find(region => region.id === targets.tailClub.regionId)?.available ? resolveMeshes(model, targets.tailClub.emphasis) : []
+            });
+          }
           const wrapper = new Group();
           specimenWrapper = wrapper;
           scene.add(wrapper);
@@ -918,9 +935,9 @@ export function createSpecimenViewer(
           controls!.saveState();
           controls!.enableDamping = !motionPreference!.matches;
           controls!.enabled = true;
-          inspection = createAnatomyInspection(model, camera, renderer!.domElement, (snapshot) => {
-            studyTargetsReady = snapshot.regions.some((region) => region.id === 'armor' && region.available) &&
-              snapshot.regions.some((region) => region.id === 'tailClub' && region.available);
+          inspection = createAnatomyInspection(model, resolvedRegions, camera, renderer!.domElement, (snapshot) => {
+            studyTargetsReady = config.study.kind === 'guided' && Object.values(config.study.targets).every(target =>
+              snapshot.regions.some(region => region.id === target.regionId && region.available));
             onInspection(snapshot);
           });
           renderer!.setAnimationLoop(render);

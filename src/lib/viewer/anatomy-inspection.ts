@@ -1,58 +1,30 @@
 import { Box3, Color, Matrix4, Mesh, MeshStandardMaterial, Raycaster, Vector2, Vector3 } from 'three';
 import type { Intersection, Material, Object3D, OrthographicCamera } from 'three';
-import { ANATOMY_IDS, createAnatomyInput } from './anatomy-input.ts';
-import type { AnatomyId } from './anatomy-input.ts';
+import { createAnatomyInput } from './anatomy-input.ts';
+import type { AnatomyId } from '../specimens/specimen-config.ts';
+import type { ResolvedAnatomyRegion } from './anatomy-regions.ts';
 
 export type AnatomyProjection = { id: AnatomyId; available: boolean; visible: boolean; x: number; y: number };
 export type InspectionSnapshot = { selected: AnatomyId | null; hovered: AnatomyId | null; width: number; height: number; regions: readonly AnatomyProjection[] };
 export type AnatomyInspection = { select(id: AnatomyId | null): void; setEnabled(enabled: boolean): void; update(width: number, height: number): void; dispose(): void };
-const TARGETS = {
-  armor: { node: 'armorGroup', anchor: [-0.01633135, 2.58094070, 0] },
-  head: { node: 'headGroup', anchor: [-0.62353848, 0.16785683, 0.51888366] },
-  tailClub: { node: 'clubMesh', anchor: [0, 0, 0.56] }
-} as const;
-
-export function anatomyRegionMeshes(model: Object3D, id: AnatomyId): readonly Mesh[] {
-  const node = model.getObjectByName(TARGETS[id].node);
-  const meshes: Mesh[] = [];
-  node?.traverse((object) => { if (object instanceof Mesh) meshes.push(object); });
-  if (id !== 'armor' || meshes.length === 0) return meshes;
-  const body = model.getObjectByName('bodyMesh');
-  return body instanceof Mesh ? [...meshes, body] : meshes;
-}
-
-export function anatomyRegionBounds(model: Object3D, id: AnatomyId): Box3 {
-  const bounds = new Box3().makeEmpty();
-  const node = model.getObjectByName(TARGETS[id].node);
-  node?.traverse((object) => {
-    if (object instanceof Mesh) bounds.expandByObject(object, true);
-  });
-  return bounds;
-}
-
-export function createAnatomyInspection(model: Object3D, camera: OrthographicCamera, canvas: HTMLCanvasElement, onChange: (snapshot: InspectionSnapshot) => void): AnatomyInspection {
-  const input = createAnatomyInput();
+export function createAnatomyInspection(model: Object3D, resolved: readonly ResolvedAnatomyRegion[], camera: OrthographicCamera, canvas: HTMLCanvasElement, onChange: (snapshot: InspectionSnapshot) => void): AnatomyInspection {
+  const input = createAnatomyInput(resolved.map(region => region.id));
   const modelMeshes: Mesh[] = [];
   const meshRegion = new Map<Object3D, AnatomyId>();
   model.updateWorldMatrix(true, true);
   model.traverse((object) => { if (object instanceof Mesh) modelMeshes.push(object); });
-  const targets = ANATOMY_IDS.map((id) => {
-    const node = model.getObjectByName(TARGETS[id].node);
-    const regionMeshes = anatomyRegionMeshes(model, id);
-    // Inspection continues highlighting only the delivered plates, not torso skin.
-    const meshes = id === 'armor' ? regionMeshes.filter((mesh) => mesh !== model.getObjectByName('bodyMesh')) : [...regionMeshes];
-    meshes.forEach((mesh) => meshRegion.set(mesh, id));
-    return { id, node, meshes, local: new Vector3(...TARGETS[id].anchor), world: new Vector3(), matrix: new Matrix4(), available: meshes.length > 0 };
+  const targets = resolved.map(region => {
+    if (region.available) region.pickMeshes.forEach(mesh => meshRegion.set(mesh, region.id));
+    const surface = region.available ? region.upperSurface : undefined;
+    if (surface && !surface.mesh.geometry.boundingBox) surface.mesh.geometry.computeBoundingBox();
+    const bounds = surface?.mesh.geometry.boundingBox;
+    return { ...region, meshes: region.highlightMeshes, node: region.anchorNode, local: region.anchorPoint,
+      world: new Vector3(), surface, surfaceInverse: new Matrix4(),
+      minSurfaceY: surface && bounds ? bounds.min.y + (bounds.max.y - bounds.min.y) * surface.minHeightRatio : Infinity };
   });
-  // The delivered armor is separate plates over a continuous upper torso.
-  // Include the visible skin between plates, not the belly or a farther hit.
-  const bodyNode = targets.find((target) => target.id === 'armor')?.available ? model.getObjectByName('bodyMesh') : undefined;
-  const body = bodyNode instanceof Mesh ? bodyNode : undefined;
-  if (body && !body.geometry.boundingBox) body.geometry.computeBoundingBox();
-  const bodyBounds = body?.geometry.boundingBox;
-  const bodyMidline = bodyBounds ? (bodyBounds.min.y + bodyBounds.max.y) / 2 : Infinity;
-  const bodyWorld = new Matrix4();
-  const bodyInverse = new Matrix4();
+  // All specimen meshes are occluders, including unconfigured surfaces and children.
+  const transforms = new Map<Object3D, Matrix4>();
+  for (const object of [...modelMeshes, ...targets.flatMap(target => target.node ? [target.node] : [])]) transforms.set(object, new Matrix4());
   const regions = targets.map(({ id, available }) => ({ id, available, visible: false, x: 0, y: 0 }));
   const epsilon = new Box3().setFromObject(model).getSize(new Vector3()).length() * 1e-5;
   const raycaster = new Raycaster();
@@ -121,16 +93,12 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
   }
   function update(nextWidth: number, nextHeight: number): void {
     if (disposed) return;
-    for (const target of targets) target.node?.updateWorldMatrix(true, false);
-    body?.updateWorldMatrix(true, false);
-    camera.updateMatrixWorld();
-    const changed = !initialized || width !== nextWidth || height !== nextHeight || !cameraWorld.equals(camera.matrixWorld) || !cameraProjection.equals(camera.projectionMatrix) || targets.some((t) => t.node && !t.matrix.equals(t.node.matrixWorld)) || (body !== undefined && !bodyWorld.equals(body.matrixWorld));
-    if (!changed) return;
     model.updateWorldMatrix(true, true);
-    if (body && !bodyWorld.equals(body.matrixWorld)) {
-      bodyWorld.copy(body.matrixWorld);
-      bodyInverse.copy(bodyWorld).invert();
-    }
+    camera.updateMatrixWorld();
+    const changed = !initialized || width !== nextWidth || height !== nextHeight || !cameraWorld.equals(camera.matrixWorld) || !cameraProjection.equals(camera.projectionMatrix) || [...transforms].some(([object, matrix]) => !matrix.equals(object.matrixWorld));
+    if (!changed) return;
+    for (const [object, matrix] of transforms) matrix.copy(object.matrixWorld);
+    for (const target of targets) if (target.surface) target.surfaceInverse.copy(target.surface.mesh.matrixWorld).invert();
     initialized = true;
     width = nextWidth;
     height = nextHeight;
@@ -140,8 +108,7 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
       const region = regions[i];
       region.visible = false;
       if (!enabled || !target.available || !target.node) return;
-      target.matrix.copy(target.node.matrixWorld);
-      target.world.copy(target.local).applyMatrix4(target.matrix);
+      target.world.copy(target.local).applyMatrix4(target.node.matrixWorld);
       if (width <= 0 || height <= 0) return;
       ndc.copy(target.world).project(camera);
       if (!Number.isFinite(ndc.x) || !Number.isFinite(ndc.y) || !Number.isFinite(ndc.z)) return;
@@ -170,7 +137,9 @@ export function createAnatomyInspection(model: Object3D, camera: OrthographicCam
     if (!hit) return null;
     const region = meshRegion.get(hit.object);
     if (region !== undefined) return region;
-    if (hit.object === body && delta.copy(hit.point).applyMatrix4(bodyInverse).y >= bodyMidline) return 'armor';
+    for (const target of targets) {
+      if (hit.object === target.surface?.mesh && delta.copy(hit.point).applyMatrix4(target.surfaceInverse).y >= target.minSurfaceY) return target.id;
+    }
     return undefined;
   }
   function refreshHover(): void {

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, OrthographicCamera } from 'three';
 import { createAnatomyInspection } from '../src/lib/viewer/anatomy-inspection.ts';
+import { resolveAnatomyRegions } from '../src/lib/viewer/anatomy-regions.ts';
+import { createAnkylosaurusConfig } from '../src/lib/specimens/ankylosaurus-config.ts';
+import { createLowPolyStegosaurus } from './stegosaurus-source.mjs';
+import { stegosaurusConfig } from './specimen-config-fixtures.mjs';
 
 // Only the DOM event adapter is simulated; geometry, camera, and picking are real.
 const previousWindow = globalThis.window;
@@ -42,7 +46,8 @@ function pointer(type, x, y) {
 }
 function click(x, y) { pointer('pointerdown', x, y); pointer('pointerup', x, y); }
 try {
-  inspection = createAnatomyInspection(model, camera, canvas, (next) => { snapshot = next; });
+  const anky = createAnkylosaurusConfig('https://example.org/ankylosaurus.glb');
+  inspection = createAnatomyInspection(model, resolveAnatomyRegions(model, anky.regions), camera, canvas, (next) => { snapshot = next; });
   inspection.update(800, 800);
   for (const x of [300, 400, 500, 400]) {
     pointer('pointermove', x, 300);
@@ -74,12 +79,50 @@ try {
   assert.equal(canvas.style.cursor, 'default');
   inspection.dispose();
   model.remove(armor);
-  inspection = createAnatomyInspection(model, camera, canvas, (next) => { snapshot = next; });
+  inspection = createAnatomyInspection(model, resolveAnatomyRegions(model, anky.regions), camera, canvas, (next) => { snapshot = next; });
   inspection.update(800, 800);
   pointer('pointermove', 400, 250);
   assert.equal(snapshot.hovered, null, 'missing armor does not turn the body into a substitute target');
   click(400, 250);
   assert.equal(snapshot.selected, null);
+  inspection.dispose();
+  model.add(armor);
+  model.position.y = 0;
+  // Same meshes with a different explicit region and no body rule.
+  const plateConfig = anky.regions.filter(r => r.id !== 'tailClub').map(r => r.id === 'armor'
+    ? { ...r, id: 'plates', upperSurface: undefined, anchor: { node: armor.children[0].name = 'plateAnchor', point: [0, 0, 0.16] } } : r);
+  const resolved = resolveAnatomyRegions(model, plateConfig);
+  inspection = createAnatomyInspection(model, resolved, camera, canvas, next => { snapshot = next; });
+  inspection.update(800, 800);
+  pointer('pointermove', 400, 300);
+  assert.equal(snapshot.hovered, null, 'upper torso does not implicitly activate another species plates');
+  click(400, 500);
+  assert.equal(snapshot.selected, null, 'nearest nonselectable body blocks hidden head');
+  const oldX = snapshot.regions.find(r => r.id === 'plates').x;
+  armor.children[0].position.x -= 0.5;
+  inspection.update(800, 800);
+  assert.notEqual(snapshot.regions.find(r => r.id === 'plates').x, oldX, 'child anchor movement updates without camera movement');
+  inspection.select('plates');
+  assert.notEqual(armor.children[0].material, material);
+  assert.equal(body.material, material, 'shared body material is untouched');
+  inspection.select('head');
+  assert.equal(armor.children[0].material, material, 'switch restores the original material');
+  inspection.dispose();
+  assert.equal(hiddenHead.material, material, 'dispose restores the selected region');
+  const stego = createLowPolyStegosaurus();
+  const stegoRegions = resolveAnatomyRegions(stego, stegosaurusConfig.regions);
+  const originals = new Map(); stego.traverse(o => { if (o.isMesh) originals.set(o, o.material); });
+  inspection = createAnatomyInspection(stego, stegoRegions, camera, canvas, next => { snapshot = next; });
+  inspection.update(800, 800);
+  for (const [id, count] of [['plates', 19], ['spikes', 4]]) {
+    inspection.select(id);
+    assert.equal([...originals].filter(([m, material]) => m.material !== material).length, count);
+  }
+  inspection.select('tailClub');
+  assert.equal(snapshot.selected, 'spikes', 'no tailClub alias');
+  inspection.dispose();
+  assert([...originals].every(([m, original]) => m.material === original));
+  stego.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   console.log('Anatomy plate-gap continuity, body boundaries, transforms, and ownership assertions passed.');
 } finally {
   inspection?.dispose();
