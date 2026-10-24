@@ -49,7 +49,23 @@ Open the URL printed by Vite. Use the side, opposite-side, three-quarter, and to
 
 The model uses **2,976 of 3,000 triangles**: a fuller torso and neck transition, substantial hips and planted feet, nineteen thin staggered dorsal plates, four tail spikes, thirty-six shallow flank scales, brows, and nostrils. Narrow plate roots, tapered crowns, varied lean, and related tan shades keep overlapping plates distinct. Materials retain the olive/cream/tan palette and flat shading. Neck and tail plates follow their respective pivots; the check covers finite/nondegenerate geometry, alternating plates, ground clearance, three supporting feet during a full gait, and return to rest.
 
-The nineteen-plate/four-spike count references the Natural History Museum's [S. stenops specimen, Sophie](https://www.nhm.ac.uk/press-office/press-releases/world_s-most-complete-stegosaurus-goes-on-show.html). Proportions, colors, skin-scale placement, and other soft tissue are artistic choices, not a validated anatomical restoration. This is procedural model source only: no GLB publication, application route, narration, or scientific scale calibration is included. Export/media delivery and exhibit integration are tracked separately in #14–#16.
+The nineteen-plate/four-spike count references the Natural History Museum's [S. stenops specimen, Sophie](https://www.nhm.ac.uk/press-office/press-releases/world_s-most-complete-stegosaurus-goes-on-show.html). Proportions, colors, skin-scale placement, and other soft tissue are artistic choices, not a validated anatomical restoration. The model preview includes no application route, narration, or scientific scale calibration. Shared viewer configuration and exhibit integration remain in #15–#16.
+
+## Stegosaurus GLB — issue #14
+
+The tracked generator also reproduces the resting GLB with the root lockfile:
+
+```sh
+npm run export:stegosaurus
+npm run check:stegosaurus-export
+npm run check:media
+```
+
+The export is ignored `media-dev/stegosaurus.glb`. Restart `npm run media:dev` to serve its fixed `http://127.0.0.1:5194/stegosaurus.glb` endpoint with GET/HEAD, ranges, CORS, and an explicit missing-model response. Existing Ankylosaurus media uses the same responder. No directory access or asset binary is added to the application.
+
+For visual verification, run `npm run preview:stegosaurus` and open `/compare.html` on the printed preview URL. It loads the real GLB from the separate media host and renders it beside the canonical source under identical lighting and camera settings. The side, opposite-side, and three-quarter controls affect both views. See [source provenance, exact regeneration, measured bounds, and verification](docs/assets/stegosaurus.md).
+
+`PUBLIC_STEGOSAURUS_MODEL_URL` is declared and illustrated in `.env.example` for #16; the current exhibit does not consume it. Stegosaurus publication authorization and production hosting/URL are **unconfirmed**. The existing production policy requires an absolute external HTTP(S) URL without credentials or loopback and an asset host allowing CORS from the application origin. Local export/preview is not production deployment.
 
 ## Check and build
 
@@ -58,6 +74,9 @@ npm run check
 npm run check:camera
 npm run check:anatomy
 npm run check:study
+npm run check:stegosaurus
+npm run check:stegosaurus-export
+npm run check:media
 npm run build -- --mode development
 npm run preview
 ```
@@ -74,7 +93,7 @@ PUBLIC_ANKYLOSAURUS_MODEL_URL=https://your-asset-host.example/ankylosaurus.glb n
 
 The example above uses POSIX shell syntax. In PowerShell, use `$env:PUBLIC_ANKYLOSAURUS_MODEL_URL = 'https://your-asset-host.example/ankylosaurus.glb'`, then `npm run build`.
 
-This public, **build-time** value must be an absolute HTTP(S) URL without credentials. Production rejects missing/loopback URLs. The asset host must allow CORS from the application's origin. No asset host/CDN was provisioned and no model publication rights were verified. Configure the deployment's actual URL; do not ship the loopback default or put GLB files in `static/`.
+This public, **build-time** value must be an absolute HTTP(S) URL without credentials. Production rejects missing/loopback URLs. The asset host must allow CORS from the application's origin. No production asset host/CDN was provisioned here. Ankylosaurus publication authorization is recorded in its [provenance document](docs/assets/ankylosaurus.md); Stegosaurus authorization remains unconfirmed. Configure the deployment's actual URL; do not ship the loopback default or put GLB files in `static/`.
 
 ## Viewer behavior
 
@@ -306,7 +325,7 @@ Svelte, camera, anatomy, and study checks passed, along with the development-mod
 
 ## Licensing and media boundary
 
-The root MIT license applies to application code and project-owned text, **not separately hosted media or the supplied model by implication**. Model reuse/publication rights and scientific accuracy remain unresolved; verify them before public media publication. The GLB, textures, recordings, font binaries, and source media must remain outside Git and application static output. Ignore rules do not protect already tracked files; inspect staged paths before publishing changes.
+The root MIT license applies to application code and project-owned text, **not separately hosted media or the supplied model by implication**. Ankylosaurus-specific publication authorization is recorded in its [provenance document](docs/assets/ankylosaurus.md) and does not extend to Stegosaurus. Stegosaurus publication authorization and hosting remain unconfirmed; see its [asset record](docs/assets/stegosaurus.md). Scientific accuracy has not been independently validated. GLB, textures, recordings, font binaries, and source media remain outside Git and application static output; the narrowly tracked procedural Stegosaurus source is the documented exception for reproducible generation. Ignore rules do not protect already tracked files; inspect staged paths before publishing changes.
 
 Typography is loaded externally through Google Fonts, with Georgia/system sans fallbacks. Both families use SIL Open Font License 1.1:
 

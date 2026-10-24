@@ -8,5 +8,8 @@ export default defineConfig({
   root,
   resolve: { dedupe: ['three'] },
   server: { host: '127.0.0.1', fs: { allow: [repository] } },
-  build: { outDir: '../../dist/stegosaurus-preview', emptyOutDir: true }
+  build: {
+    outDir: '../../dist/stegosaurus-preview', emptyOutDir: true,
+    rolldownOptions: { input: { preview: `${root}index.html`, compare: `${root}compare.html` } }
+  }
 });
