@@ -23,5 +23,10 @@ media-dev/
 *.mp4
 *.woff
 *.woff2
-example project/
+example project/*
+!example project/low-poly/
+example project/low-poly/*
+!example project/low-poly/stegosaurus.js
+!example project/low-poly/model-geometry.js
+!example project/low-poly/walk-cycle.js
 .superpowers/
