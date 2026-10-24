@@ -1,14 +1,21 @@
 import { createServer } from 'node:http';
 import { open } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const media = new Map([
   ['/ankylosaurus.glb', { file: 'ankylosaurus.glb', type: 'model/gltf-binary' }],
+  ['/stegosaurus.glb', { file: 'stegosaurus.glb', type: 'model/gltf-binary' }],
   ['/ankylosaurus-en.mp3', { file: 'ankylosaurus-en.mp3', type: 'audio/mpeg' }],
   ['/ankylosaurus-de.mp3', { file: 'ankylosaurus-de.mp3', type: 'audio/mpeg' }]
 ]);
 
-createServer(async (request, response) => {
+export function createDevMediaServer() {
+  return createServer(serveMedia);
+}
+
+async function serveMedia(request, response) {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Expose-Headers', 'Accept-Ranges, Content-Range, Content-Length');
   const asset = media.get(request.url);
@@ -80,15 +87,18 @@ createServer(async (request, response) => {
       response.destroy();
     } else {
       response.writeHead(404, { 'Content-Type': 'text/plain' });
-      response.end(asset.file === 'ankylosaurus.glb'
+      response.end(asset.type === 'model/gltf-binary'
         ? 'Local specimen asset is unavailable.'
         : 'Local narration asset is unavailable.');
     }
   } finally {
     await file?.close();
   }
-}).listen(5194, '127.0.0.1', () => {
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) createDevMediaServer().listen(5194, '127.0.0.1', () => {
   console.log('Local model: http://127.0.0.1:5194/ankylosaurus.glb');
+  console.log('Local Stegosaurus model: http://127.0.0.1:5194/stegosaurus.glb');
   console.log('Optional local narration: http://127.0.0.1:5194/ankylosaurus-en.mp3');
   console.log('Optional German narration: http://127.0.0.1:5194/ankylosaurus-de.mp3');
 });
