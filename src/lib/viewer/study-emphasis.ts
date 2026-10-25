@@ -1,6 +1,5 @@
 import { Color, Mesh } from 'three';
 import type { Material, Object3D } from 'three';
-import { anatomyRegionMeshes } from './anatomy-inspection.ts';
 
 export type StudyEmphasis = {
   apply(region: 'armor' | 'tailClub'): void;
@@ -18,9 +17,9 @@ type MeshMaterials = {
 const AMBER = new Color('#d9a54d');
 const DIM = new Color('#26241f');
 
-export function createStudyEmphasis(model: Object3D): StudyEmphasis {
-  const armor = new Set(anatomyRegionMeshes(model, 'armor'));
-  const tailClub = new Set(anatomyRegionMeshes(model, 'tailClub'));
+export function createStudyEmphasis(model: Object3D, targets: Readonly<Record<'armor' | 'tailClub', readonly Mesh[]>>): StudyEmphasis {
+  const armor = new Set(targets.armor);
+  const tailClub = new Set(targets.tailClub);
   const emphasisTargets = new Set([...armor, ...tailClub]);
   const meshes: MeshMaterials[] = [];
   const ownedClones: Material[] = [];

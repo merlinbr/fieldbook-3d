@@ -17,6 +17,7 @@ import {
   Vector3
 } from 'three';
 import type { Intersection, Material } from 'three';
+import type { SpecimenScale } from '../specimens/specimen-config.ts';
 
 export type ScaleAnchor = { visible: boolean; x: number; y: number };
 export type ScaleProjection = { visible: boolean; length: ScaleAnchor; human: ScaleAnchor };
@@ -30,7 +31,6 @@ export type ScaleComparison = {
   dispose(): void;
 };
 
-const SPECIMEN_LENGTH = 8;
 const HUMAN_HEIGHT = 1.7;
 const HUMAN_CLEARANCE = 0.6;
 const GUIDE_CLEARANCE = 0.35;
@@ -50,8 +50,12 @@ function finiteBounds(bounds: Box3): boolean {
 export function createScaleComparison(
   sourceBounds: Box3,
   specimenMeshes: readonly Mesh[],
+  scale: SpecimenScale,
   onProjection: (snapshot: ScaleProjection) => void
 ): ScaleComparison {
+  if (!scale || !Number.isFinite(scale.lengthMetres) || scale.lengthMetres <= 0) {
+    throw new RangeError('Scale comparison requires a finite positive specimen length');
+  }
   if (!finiteBounds(sourceBounds) || sourceBounds.max.x <= sourceBounds.min.x || specimenMeshes.length === 0) {
     throw new RangeError('Scale comparison requires finite specimen bounds with a positive X extent');
   }
@@ -59,7 +63,7 @@ export function createScaleComparison(
   const sourceSize = sourceBounds.getSize(new Vector3());
   const sourceCenter = sourceBounds.getCenter(new Vector3());
   const origin = new Vector3(sourceCenter.x, sourceBounds.min.y, sourceCenter.z);
-  const factor = SPECIMEN_LENGTH / sourceSize.x;
+  const factor = scale.lengthMetres / sourceSize.x;
   if (!Number.isFinite(factor) || factor <= 0) {
     throw new RangeError('Scale comparison calibration is not finite and positive');
   }

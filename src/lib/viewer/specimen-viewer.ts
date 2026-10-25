@@ -27,9 +27,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { orthographicHalfHeight } from './camera-fit.ts';
 import { validExplorationView } from './study-handoff.ts';
 import type { ExplorationView } from './study-handoff.ts';
-import { anatomyRegionBounds, createAnatomyInspection } from './anatomy-inspection.ts';
+import { createAnatomyInspection } from './anatomy-inspection.ts';
+import { resolveAnatomyRegions, resolveStudyTargets, regionBounds } from './anatomy-regions.ts';
+import type { ResolvedAnatomyRegion, ResolvedStudyTargets } from './anatomy-regions.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
-import type { AnatomyId } from './anatomy-input.ts';
+import type { AnatomyId, SpecimenViewerConfig } from '../specimens/specimen-config.ts';
+import { validateSpecimenConfig } from '../specimens/specimen-config.ts';
 import { createStudyEmphasis } from './study-emphasis.ts';
 import type { StudyEmphasis } from './study-emphasis.ts';
 import type { StudyFrame, StudyView } from './field-study.ts';
@@ -42,6 +45,9 @@ export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
 export type ViewerHandle = {
   calibrationReady: boolean;
+  readonly studyTargetsReady: boolean;
+  readonly scaleVisible: boolean;
+  setScaleVisible(visible: boolean): boolean;
   reset(): void;
   zoom(factor: number): void;
   orbit(direction: OrbitDirection): void;
@@ -91,7 +97,7 @@ function disposeResources(roots: readonly Object3D[]): void {
 
 export function createSpecimenViewer(
   container: HTMLElement,
-  modelUrl: string,
+  config: SpecimenViewerConfig,
   onState: (state: ViewerState) => void,
   onInspection: (snapshot: InspectionSnapshot) => void,
   onScale: (snapshot: ScaleProjection) => void
@@ -115,6 +121,8 @@ export function createSpecimenViewer(
   let presentation: ReturnType<typeof createStudyPresentation> | undefined;
   let dust: StudyDust | undefined;
   let model: Object3D | undefined;
+  let resolvedRegions: readonly ResolvedAnatomyRegion[] = [];
+  let studyTargets: ResolvedStudyTargets | null = null;
   let modelScenes: Object3D[] = [];
   const scaleTarget = new Vector3();
   const scalePosition = new Vector3();
@@ -154,6 +162,8 @@ export function createSpecimenViewer(
   let studyTargetsReady = false;
   let calibrationReady = false;
   let studyActive = false;
+  let calibrationActive = false;
+  let standaloneScale = false;
   let studyFrame: (() => void) | null = null;
   let currentStudyFrame: Readonly<StudyFrame> | null = null;
   const heroPosition = new Vector3();
@@ -266,8 +276,12 @@ export function createSpecimenViewer(
 
   function calculateRegionFits(): void {
     if (!model || !controls) throw new RangeError('Specimen model is unavailable');
-    armorBounds.copy(anatomyRegionBounds(model, 'armor'));
-    tailClubBounds.copy(anatomyRegionBounds(model, 'tailClub'));
+    if (config.study.kind !== 'guided') throw new RangeError('Specimen has no guided study');
+    const armorRegion = studyTargets?.regions.armor;
+    const tailRegion = studyTargets?.regions.tailClub;
+    if (!armorRegion?.available || !tailRegion?.available) throw new RangeError('Study regions are unavailable');
+    armorBounds.copy(regionBounds(armorRegion));
+    tailClubBounds.copy(regionBounds(tailRegion));
     if (armorBounds.isEmpty() || tailClubBounds.isEmpty()) throw new RangeError('Study region bounds are unavailable');
     fitSavedPosition.copy(camera.position);
     fitSavedTarget.copy(controls.target);
@@ -359,9 +373,17 @@ export function createSpecimenViewer(
   }
 
   function beginStudy(): boolean {
+    if (config.study.kind !== 'guided' || !studyTargetsReady || studyActive) return false;
+    if (standaloneScale) restoreCalibration();
+    return beginCalibration(true);
+  }
+
+  function beginCalibration(forStudy: boolean): boolean {
     if (disposed || state !== 'ready' || !controls || !specimenWrapper || !comparison ||
-      !studyTargetsReady || !calibrationReady || studyActive) return false;
-    ownCamera(false);
+      !calibrationReady || calibrationActive) return false;
+    // Settle damping before saving; standalone comparison preserves inspection.
+    if (forStudy) ownCamera(false);
+    else { controls.enableDamping = false; controls.update(); }
     savedPosition.copy(camera.position);
     savedTarget.copy(controls.target);
     savedZoom = camera.zoom;
@@ -424,10 +446,12 @@ export function createSpecimenViewer(
     updateFrustum();
     key.shadow.camera.updateProjectionMatrix();
     controls.update();
-    studyActive = true;
+    calibrationActive = true;
+    studyActive = forStudy;
+    standaloneScale = !forStudy;
     try {
       calculateScaleFit();
-      calculateRegionFits();
+      if (forStudy) calculateRegionFits();
       const shadowExtent = scaleSphere.radius * 1.6;
       key.target.position.copy(scaleTarget);
       fill.target.position.copy(scaleTarget);
@@ -448,22 +472,40 @@ export function createSpecimenViewer(
       updateFrustum();
       controls.update();
       camera.updateMatrixWorld();
-      comparison.setVisible(false);
+      if (forStudy) comparison.setVisible(false);
+      else {
+        frameScaleComparison();
+        comparison.setVisible(true);
+        controls.enableDamping = !motionPreference?.matches;
+      }
       return true;
     } catch {
       calibrationReady = false;
       handle.calibrationReady = false;
-      restoreStudy();
+      restoreCalibration();
       return false;
     }
   }
 
-  function restoreStudy(): void {
-    if (!studyActive || !controls || !specimenWrapper || !comparison) return;
+  function frameScaleComparison(): void {
+    if (!controls) return;
+    camera.position.copy(scalePosition);
+    controls.target.copy(scaleTarget);
+    camera.zoom = studyZoom();
+    controls.minZoom = Math.min(savedControlsMinZoom, camera.zoom);
+    controls.maxZoom = Math.max(savedControlsMaxZoom, camera.zoom);
+    camera.updateProjectionMatrix();
+    controls.update();
+    camera.updateMatrixWorld();
+  }
+
+  function restoreCalibration(): void {
+    if (!calibrationActive || !controls || !specimenWrapper || !comparison) return;
     cancelComposition();
     comparison.setVisible(false);
     emphasis?.clear();
-    ownCamera(false);
+    if (studyActive) ownCamera(false);
+    else { controls.enableDamping = false; controls.update(); }
     specimenWrapper.position.copy(savedWrapperPosition);
     specimenWrapper.scale.copy(savedWrapperScale);
     specimenWrapper.quaternion.copy(savedWrapperQuaternion);
@@ -494,6 +536,8 @@ export function createSpecimenViewer(
     controls.update();
     camera.updateMatrixWorld();
     studyActive = false;
+    standaloneScale = false;
+    calibrationActive = false;
     currentStudyFrame = null;
     presentation?.setActive(false, performance.now(), motionPreference?.matches ?? false);
     ownCamera(true);
@@ -549,7 +593,7 @@ export function createSpecimenViewer(
     },
     exit() {
       studyFrame = null;
-      restoreStudy();
+      if (studyActive) restoreCalibration();
     },
     setFrame(callback) { studyFrame = disposed ? null : callback; }
   };
@@ -595,6 +639,9 @@ export function createSpecimenViewer(
           applyGuidedPose(currentStudyFrame);
         }
       }
+    } else if (standaloneScale) {
+      calculateScaleFit();
+      frameScaleComparison();
     }
   }
 
@@ -635,6 +682,7 @@ export function createSpecimenViewer(
 
   function reset(): void {
     if (disposed || !manual || state !== 'ready' || !controls) return;
+    if (standaloneScale) restoreCalibration();
     const damping = controls.enableDamping;
     controls.enableDamping = false;
     controls.update();
@@ -683,7 +731,7 @@ export function createSpecimenViewer(
 
   function dispose(): void {
     if (disposed) return;
-    if (studyActive) restoreStudy();
+    if (calibrationActive) restoreCalibration();
     disposed = true;
     calibrationReady = false;
     handle.calibrationReady = false;
@@ -732,6 +780,15 @@ export function createSpecimenViewer(
 
   handle = {
     calibrationReady: false,
+    get studyTargetsReady() { return studyTargetsReady; },
+    get scaleVisible() { return standaloneScale; },
+    setScaleVisible(visible) {
+      if (disposed || state !== 'ready' || studyActive || !calibrationReady) return false;
+      if (visible === standaloneScale) return true;
+      if (visible) return beginCalibration(false);
+      restoreCalibration();
+      return true;
+    },
     reset, zoom, orbit, dispose, study,
     setCinema(active) {
       if (!disposed) presentation?.setActive(active && studyActive, performance.now(), motionPreference?.matches ?? false);
@@ -747,6 +804,7 @@ export function createSpecimenViewer(
     },
     restoreExploration(view) {
       if (disposed || state !== 'ready' || studyActive || !controls || !validExplorationView(view)) return false;
+      if (standaloneScale) restoreCalibration();
       const damping = controls.enableDamping;
       controls.enableDamping = false;
       controls.update();
@@ -800,8 +858,9 @@ export function createSpecimenViewer(
   }
 
   try {
+    validateSpecimenConfig(config);
     new GLTFLoader().load(
-      modelUrl,
+      config.modelUrl,
       (gltf) => {
         if (disposed) {
           disposeResources(gltf.scenes);
@@ -810,7 +869,10 @@ export function createSpecimenViewer(
         modelScenes = gltf.scenes;
         try {
           model = gltf.scene;
-          emphasis = createStudyEmphasis(model);
+          resolvedRegions = resolveAnatomyRegions(model, config.regions);
+          studyTargets = resolveStudyTargets(model, resolvedRegions, config.study);
+          studyTargetsReady = studyTargets?.ready ?? false;
+          if (studyTargets?.ready) emphasis = createStudyEmphasis(model, studyTargets.meshes);
           const wrapper = new Group();
           specimenWrapper = wrapper;
           scene.add(wrapper);
@@ -848,13 +910,17 @@ export function createSpecimenViewer(
           spotlight.position.copy(sphere.center).add(new Vector3(-0.7, 2.2, 1.5).multiplyScalar(radius));
           spotlight.target.position.copy(sphere.center);
           wrapper.add(spotlight, spotlight.target);
-          dust = createStudyDust(spotlight);
-          wrapper.add(dust.root);
+          if (config.study.kind === 'guided') {
+            dust = createStudyDust(spotlight);
+            wrapper.add(dust.root);
+          }
           try {
-            comparison = createScaleComparison(bounds, specimenMeshes, onScale);
-            scene.add(comparison.root);
-            calibrationReady = true;
-            handle.calibrationReady = true;
+            if (config.scale) {
+              comparison = createScaleComparison(bounds, specimenMeshes, config.scale, onScale);
+              scene.add(comparison.root);
+              calibrationReady = true;
+              handle.calibrationReady = true;
+            }
           } catch {
             calibrationReady = false;
             handle.calibrationReady = false;
@@ -870,7 +936,7 @@ export function createSpecimenViewer(
               plinths.push(object.material);
             }
           });
-          presentation = createStudyPresentation({
+          if (dust) presentation = createStudyPresentation({
             background: scene.background as Color, hemisphere, key, fill, spotlight, plinths, dust
           });
           key.position.copy(sphere.center).add(new Vector3(-2, 4, 3).multiplyScalar(radius));
@@ -918,9 +984,7 @@ export function createSpecimenViewer(
           controls!.saveState();
           controls!.enableDamping = !motionPreference!.matches;
           controls!.enabled = true;
-          inspection = createAnatomyInspection(model, camera, renderer!.domElement, (snapshot) => {
-            studyTargetsReady = snapshot.regions.some((region) => region.id === 'armor' && region.available) &&
-              snapshot.regions.some((region) => region.id === 'tailClub' && region.available);
+          inspection = createAnatomyInspection(model, resolvedRegions, camera, renderer!.domElement, (snapshot) => {
             onInspection(snapshot);
           });
           renderer!.setAnimationLoop(render);
