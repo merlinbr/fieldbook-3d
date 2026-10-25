@@ -1,12 +1,21 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale, localizeHref } from '#lib/paraglide/runtime.js';
-  import { stegosaurus, stegosaurusText } from '#lib/specimens/stegosaurus.ts';
+  import { stegosaurus } from '#lib/specimens/stegosaurus.ts';
+  import { stegosaurusText } from '#lib/specimens/content.ts';
+  import { returnToOverview } from '#lib/specimens/overview-state.ts';
   import SpecimenViewer from '#lib/viewer/SpecimenViewer.svelte';
 
   const locale = getLocale();
   const text = stegosaurusText[locale];
   const length = stegosaurus.config.scale;
+  let overviewContext = $state('');
+  onMount(() => { overviewContext = returnToOverview('stegosaurus', location.hash); });
+  function changeLanguage(event: MouseEvent): void {
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (location.hash.startsWith('#overview=')) (event.currentTarget as HTMLAnchorElement).hash = location.hash;
+  }
 </script>
 
 <svelte:head>
@@ -16,10 +25,10 @@
 
 <div class="fieldbook">
   <header class="site-header">
-    <span class="brand">Fieldbook 3D</span>
+    <a class="brand" href={localizeHref('/overview/') + overviewContext} data-sveltekit-reload>Fieldbook 3D</a>
     <nav class="language-nav" aria-label={m.languages()}>
-      <a href={localizeHref('/specimens/stegosaurus/', { locale: 'en' })} lang="en" hreflang="en" aria-current={locale === 'en' ? 'page' : undefined} data-sveltekit-reload>English</a>
-      <a href={localizeHref('/specimens/stegosaurus/', { locale: 'de' })} lang="de" hreflang="de" aria-current={locale === 'de' ? 'page' : undefined} data-sveltekit-reload>Deutsch</a>
+      <a href={localizeHref('/specimens/stegosaurus/', { locale: 'en' })} lang="en" hreflang="en" aria-current={locale === 'en' ? 'page' : undefined} onclick={changeLanguage} data-sveltekit-reload>English</a>
+      <a href={localizeHref('/specimens/stegosaurus/', { locale: 'de' })} lang="de" hreflang="de" aria-current={locale === 'de' ? 'page' : undefined} onclick={changeLanguage} data-sveltekit-reload>Deutsch</a>
     </nav>
   </header>
 
@@ -36,6 +45,7 @@
       </div>
     </div>
     <nav class="specimen-navigation" aria-label={m.specimens()}>
+      <a href={localizeHref('/overview/') + overviewContext} data-sveltekit-reload>{m.overview()}</a>
       <a href={localizeHref('/specimens/ankylosaurus/')} data-sveltekit-reload>{m.exploreAnkylosaurus()}</a>
     </nav>
     <SpecimenViewer config={stegosaurus.config} {text} study={{ kind: 'none' }} />

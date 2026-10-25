@@ -18,7 +18,9 @@ try {
     ['stegosaurus.glb', 'stegosaurus-model'],
     ['ankylosaurus.glb', 'existing-model'],
     ['ankylosaurus-en.mp3', 'existing-english-audio'],
-    ['ankylosaurus-de.mp3', 'existing-german-audio']
+    ['ankylosaurus-de.mp3', 'existing-german-audio'],
+    ['ankylosaurus-poster.png', 'existing-ankylosaurus-poster'],
+    ['stegosaurus-poster.png', 'existing-stegosaurus-poster']
   ]);
   for (const [name, contents] of assets) await writeFile(join(directory, 'media-dev', name), contents);
   const { createDevMediaServer } = await import(pathToFileURL(script));
@@ -30,7 +32,7 @@ try {
   for (const [name, contents] of assets) {
     const response = await request(`/${name}`);
     assert.equal(response.status, 200, `${name} GET`);
-    assert.equal(response.headers.get('content-type'), name.endsWith('.glb') ? 'model/gltf-binary' : 'audio/mpeg');
+    assert.equal(response.headers.get('content-type'), name.endsWith('.glb') ? 'model/gltf-binary' : name.endsWith('.png') ? 'image/png' : 'audio/mpeg');
     assert.equal(response.headers.get('content-length'), String(contents.length));
     assert.equal(response.headers.get('access-control-allow-origin'), '*');
     assert.equal(response.headers.get('access-control-expose-headers'), 'Accept-Ranges, Content-Range, Content-Length');
@@ -73,17 +75,19 @@ try {
     assert.equal(response.status, 404, `Fixed allowlist rejects ${path}`);
     await response.arrayBuffer();
   }
-  for (const name of ['stegosaurus.glb', 'ankylosaurus.glb', 'ankylosaurus-en.mp3']) {
+  for (const name of ['stegosaurus.glb', 'ankylosaurus.glb', 'ankylosaurus-en.mp3', 'ankylosaurus-poster.png', 'stegosaurus-poster.png']) {
     await rm(join(directory, 'media-dev', name));
     const response = await request(`/${name}`);
     assert.equal(response.status, 404);
     assert.equal(response.headers.get('access-control-allow-origin'), '*');
-    assert.equal(await response.text(), name.endsWith('.glb') ? 'Local specimen asset is unavailable.' : 'Local narration asset is unavailable.');
+    assert.equal(await response.text(), name.endsWith('.png')
+      ? 'Local specimen poster is unavailable.'
+      : name.endsWith('.glb') ? 'Local specimen asset is unavailable.' : 'Local narration asset is unavailable.');
     const head = await request(`/${name}`, { method: 'HEAD' });
     assert.equal(head.status, 404);
     assert.equal(await head.text(), '');
   }
-  console.log('PASS development media: both model routes, existing audio, GET/HEAD/ranges, CORS/preflight, missing-file errors and fixed filesystem allowlist.');
+  console.log('PASS development media: model/audio/poster routes, GET/HEAD/ranges, CORS/preflight, missing-file errors and fixed filesystem allowlist.');
 } finally {
   if (server) await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   await rm(directory, { recursive: true, force: true });

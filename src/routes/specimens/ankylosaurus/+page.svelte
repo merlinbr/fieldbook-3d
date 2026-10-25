@@ -1,18 +1,24 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale, localizeHref } from '#lib/paraglide/runtime.js';
-  import { ankylosaurus, ankylosaurusText } from '#lib/specimens/ankylosaurus.ts';
+  import { ankylosaurus } from '#lib/specimens/ankylosaurus.ts';
+  import { ankylosaurusText } from '#lib/specimens/content.ts';
+  import { returnToOverview } from '#lib/specimens/overview-state.ts';
   import SpecimenViewer from '#lib/viewer/SpecimenViewer.svelte';
 
   const locale = getLocale();
   const text = ankylosaurusText[locale];
   let specimenViewer: SpecimenViewer | undefined;
+  let overviewContext = $state('');
+  onMount(() => { overviewContext = returnToOverview('ankylosaurus', location.hash); });
 
   function changeLanguage(event: MouseEvent): void {
     // Native modified clicks open a separate document without interrupting this one.
     if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     const link = event.currentTarget as HTMLAnchorElement;
     if (link.getAttribute('aria-current') === 'page') return;
+    if (location.hash.startsWith('#overview=')) link.hash = location.hash;
     specimenViewer?.prepareLanguageLink(link);
   }
 </script>
@@ -24,7 +30,7 @@
 
 <div class="fieldbook">
   <header class="site-header">
-    <span class="brand">Fieldbook 3D</span>
+    <a class="brand" href={localizeHref('/overview/') + overviewContext} data-sveltekit-reload>Fieldbook 3D</a>
     <nav class="language-nav" aria-label={m.languages()}>
       <a
         href={localizeHref('/specimens/ankylosaurus/', { locale: 'en' })}
@@ -57,6 +63,7 @@
       </div>
     </div>
     <nav class="specimen-navigation" aria-label={m.specimens()}>
+      <a href={localizeHref('/overview/') + overviewContext} data-sveltekit-reload>{m.overview()}</a>
       <a href={localizeHref('/specimens/stegosaurus/')} data-sveltekit-reload>{m.exploreStegosaurus()}</a>
     </nav>
     <SpecimenViewer bind:this={specimenViewer} config={ankylosaurus.config} {text} study={{ kind: 'guided', recording: ankylosaurus.study[locale], versions: ankylosaurus.versions }} />

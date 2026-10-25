@@ -134,7 +134,7 @@ async function noOverflow(page) { assert(await page.evaluate(()=>document.docume
       const unavailable=await browser.newContext();await unavailable.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args);};});
       const p=await unavailable.newPage();await p.goto(base+'/de/specimens/stegosaurus/',{waitUntil:'domcontentloaded'});
       await p.getByText('Die 3D-Ansicht ist in diesem Browser nicht verfügbar.',{exact:false}).waitFor();
-      assert.equal(await p.locator('.specimen-navigation a').count(),1);await snap(p,'webgl-unavailable-de');await unavailable.close();
+      assert.equal(await p.locator('.specimen-navigation a').count(),2);await snap(p,'webgl-unavailable-de');await unavailable.close();
       results.push('Delayed HTTP loading, intercepted failed fetch, recovered reload and WebGL-unavailable context passed; real external CORS not tested');
     }
     // Ankylosaurus real recordings, chapter navigation, locale handoff and document teardown.
@@ -157,15 +157,15 @@ async function noOverflow(page) { assert(await page.evaluate(()=>document.docume
       assert(!new URL(page.url()).searchParams.has('study'));
       // Resume through the actual native control, then species-link away during playback.
       await page.locator('.study-play').click();await page.waitForFunction(()=>window.__audios.some(a=>!a.paused));
-      await page.locator('.specimen-navigation a').click();await ready(page);
+      await page.locator('.specimen-navigation a[href*="/specimens/"]').click();await ready(page);
       assert.equal(new URL(page.url()).pathname,`/${target}/specimens/stegosaurus/`);assert.equal(new URL(page.url()).search,'');
       assert.equal(await page.evaluate(()=>window.__audios.length),0);assert.equal(await page.locator('.study-transport').count(),0);
-      await page.locator('.specimen-navigation a').click();await ready(page);assert.equal(await page.locator('.study-transport').count(),0);
-      const link=page.locator('.specimen-navigation a');const popupPromise=context.waitForEvent('page');await link.click({button:'middle'});const popup=await popupPromise;await popup.waitForLoadState('domcontentloaded');await ready(popup);await popup.close();
+      await page.locator('.specimen-navigation a[href*="/specimens/"]').click();await ready(page);assert.equal(await page.locator('.study-transport').count(),0);
+      const link=page.locator('.specimen-navigation a[href*="/specimens/"]');const popupPromise=context.waitForEvent('page');await link.click({button:'middle'});const popup=await popupPromise;await popup.waitForLoadState('domcontentloaded');await ready(popup);await popup.close();
       assert.equal(errors.length,0,errors.join('\n'));results.push(`${locale}: real recording playback, four chapters, paused locale handoff, resume/species teardown/return and modified-click new tab passed`);
       await context.close();
     }
-    const root=await browser.newPage();await root.goto(base+'/',{waitUntil:'domcontentloaded'});await root.waitForURL('**/en/specimens/ankylosaurus/');await ready(root);await root.close();
-    results.push('Root redirect preserved. All browser acceptance assertions passed.');
+    const root=await browser.newPage();await root.goto(base+'/',{waitUntil:'domcontentloaded'});await root.waitForURL('**/en/overview/');await root.locator('.specimen-index').waitFor();await root.close();
+    results.push('Root redirects to the English Overview. All browser acceptance assertions passed.');
   } finally {await fs.writeFile(`${evidence}/browser-results.txt`,results.join('\n')+'\n');await browser.close();console.log(results.join('\n'));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

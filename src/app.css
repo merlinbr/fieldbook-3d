@@ -95,6 +95,10 @@ h1,
 .brand {
   font-size: 1.125rem;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
 }
 
 .language-nav {
@@ -125,6 +129,9 @@ h1,
 
 .specimen-navigation {
   margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
 }
 
 .specimen-navigation a {

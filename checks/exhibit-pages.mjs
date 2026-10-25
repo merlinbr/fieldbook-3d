@@ -31,6 +31,19 @@ for (const locale of ['en', 'de']) {
     }
   }
 }
+for (const locale of ['en', 'de']) {
+  const html = await readFile(new URL(`../build/${locale}/overview/index.html`, import.meta.url), 'utf8');
+  assert.match(html, new RegExp(`<html[^>]*lang="${locale}"`));
+  assert.match(html, /<title>[^<]+ \| Fieldbook 3D<\/title>/);
+  assert.match(html, /<meta name="description" content="[^"]+"/);
+  for (const species of ['ankylosaurus', 'stegosaurus']) {
+    assert(html.includes(`href="/${locale}/specimens/${species}/"`), 'Native specimen link available before hydration');
+  }
+  for (const language of ['en', 'de']) {
+    assert(html.includes(`href="/${language}/overview/"`), 'Localized static Overview link');
+  }
+  assert(!html.includes('<canvas') && !html.includes('<audio'), 'Still-image Overview has no renderer or narration');
+}
 const root = await readFile(new URL('../build/index.html', import.meta.url), 'utf8');
-assert(root.includes('url=/en/specimens/ankylosaurus/'));
-console.log('Four localized static exhibit pages, metadata, accessibility, locale links and root assertions passed.');
+assert(root.includes('url=/en/overview/'));
+console.log('Four localized static exhibit pages, metadata, accessibility, locale links and Overview entry passed.');

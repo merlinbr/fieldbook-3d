@@ -12,7 +12,7 @@ export default defineConfig({
         runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true
       },
       adapter: adapter({ strict: true }),
-      prerender: { entries: ['/', '/en/specimens/ankylosaurus/', '/de/specimens/ankylosaurus/', '/en/specimens/stegosaurus/', '/de/specimens/stegosaurus/'] }
+      prerender: { entries: ['/', '/en/overview/', '/de/overview/', '/en/specimens/ankylosaurus/', '/de/specimens/ankylosaurus/', '/en/specimens/stegosaurus/', '/de/specimens/stegosaurus/'] }
     })
   ]
 });

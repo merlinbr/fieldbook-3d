@@ -8,7 +8,9 @@ const media = new Map([
   ['/ankylosaurus.glb', { file: 'ankylosaurus.glb', type: 'model/gltf-binary' }],
   ['/stegosaurus.glb', { file: 'stegosaurus.glb', type: 'model/gltf-binary' }],
   ['/ankylosaurus-en.mp3', { file: 'ankylosaurus-en.mp3', type: 'audio/mpeg' }],
-  ['/ankylosaurus-de.mp3', { file: 'ankylosaurus-de.mp3', type: 'audio/mpeg' }]
+  ['/ankylosaurus-de.mp3', { file: 'ankylosaurus-de.mp3', type: 'audio/mpeg' }],
+  ['/ankylosaurus-poster.png', { file: 'ankylosaurus-poster.png', type: 'image/png' }],
+  ['/stegosaurus-poster.png', { file: 'stegosaurus-poster.png', type: 'image/png' }]
 ]);
 
 export function createDevMediaServer() {
@@ -87,9 +89,11 @@ async function serveMedia(request, response) {
       response.destroy();
     } else {
       response.writeHead(404, { 'Content-Type': 'text/plain' });
-      response.end(asset.type === 'model/gltf-binary'
-        ? 'Local specimen asset is unavailable.'
-        : 'Local narration asset is unavailable.');
+      response.end(asset.type === 'image/png'
+        ? 'Local specimen poster is unavailable.'
+        : asset.type === 'model/gltf-binary'
+          ? 'Local specimen asset is unavailable.'
+          : 'Local narration asset is unavailable.');
     }
   } finally {
     await file?.close();
@@ -101,4 +105,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   console.log('Local Stegosaurus model: http://127.0.0.1:5194/stegosaurus.glb');
   console.log('Optional local narration: http://127.0.0.1:5194/ankylosaurus-en.mp3');
   console.log('Optional German narration: http://127.0.0.1:5194/ankylosaurus-de.mp3');
+  console.log('Local Ankylosaurus poster: http://127.0.0.1:5194/ankylosaurus-poster.png');
+  console.log('Local Stegosaurus poster: http://127.0.0.1:5194/stegosaurus-poster.png');
 });

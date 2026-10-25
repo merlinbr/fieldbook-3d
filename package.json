@@ -12,6 +12,7 @@
     "check": "node tools/paraglide.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:exhibits": "node checks/model-url.mjs && node checks/stegosaurus-exhibit.mjs",
     "check:exhibit-pages": "node checks/exhibit-pages.mjs",
+    "check:overview": "node checks/catalog.mjs && node checks/overview-state.mjs && node checks/poster-url.mjs",
     "check:browser": "node checks/exhibit-browser.cjs",
     "check:camera": "node checks/camera-fit.mjs && node checks/scale-comparison.mjs",
     "check:anatomy": "node checks/anatomy-regions.mjs && node checks/anatomy-input.mjs && node checks/anatomy-inspection.mjs",
@@ -22,6 +23,7 @@
     "check:media": "node checks/dev-media.mjs",
     "preview:stegosaurus": "vite --config tools/stegosaurus-preview/vite.config.js",
     "build:stegosaurus": "vite build --config tools/stegosaurus-preview/vite.config.js",
+    "prepare:posters": "vite --config tools/poster-preparation/vite.config.js",
     "media:dev": "node tools/serve-dev-media.mjs"
   },
   "dependencies": { "three": "0.186.1" },

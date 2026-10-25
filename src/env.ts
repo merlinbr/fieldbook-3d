@@ -11,6 +11,16 @@ export const variables = defineEnvVars({
     static: true,
     schema: (value: string | undefined) => value
   },
+  PUBLIC_ANKYLOSAURUS_POSTER_URL: {
+    public: true,
+    static: true,
+    schema: (value: string | undefined) => value
+  },
+  PUBLIC_STEGOSAURUS_POSTER_URL: {
+    public: true,
+    static: true,
+    schema: (value: string | undefined) => value
+  },
   PUBLIC_ANKYLOSAURUS_STUDY_VERSION: {
     public: true,
     static: true,
