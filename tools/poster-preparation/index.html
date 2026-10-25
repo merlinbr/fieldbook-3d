@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fieldbook poster preparation</title>
+  <style>
+    body { margin: 2rem; color: #eee9d9; background: #22251f; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 1280px; margin: auto; }
+    h1 { margin-bottom: .25rem; }
+    #status { min-height: 1.5em; }
+    #previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 1.5rem; }
+    figure { margin: 0; }
+    canvas { display: block; width: 100%; height: auto; background: #22251f; }
+    button { min-height: 44px; margin-top: .75rem; padding: .5rem 1rem; font: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Fieldbook poster preparation</h1>
+    <p>Loads the local source GLBs and renders fixed 1200 × 750 PNGs. This standalone tool is not part of the application.</p>
+    <p id="status" role="status">Loading models…</p>
+    <section id="previews" aria-label="Poster previews"></section>
+  </main>
+  <script type="module" src="./poster-preparation.js"></script>
+</body>
+</html>
