@@ -123,6 +123,17 @@ h1,
   padding-block: 1.5rem 2rem;
 }
 
+.specimen-navigation {
+  margin-bottom: 1rem;
+}
+
+.specimen-navigation a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
+
 .exhibit-heading {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);

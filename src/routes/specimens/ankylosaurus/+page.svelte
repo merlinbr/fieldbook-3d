@@ -56,6 +56,9 @@
         <p class="reconstruction-note">{text.reconstruction}</p>
       </div>
     </div>
+    <nav class="specimen-navigation" aria-label={m.specimens()}>
+      <a href={localizeHref('/specimens/stegosaurus/')} data-sveltekit-reload>{m.exploreStegosaurus()}</a>
+    </nav>
     <SpecimenViewer bind:this={specimenViewer} config={ankylosaurus.config} {text} study={{ kind: 'guided', recording: ankylosaurus.study[locale], versions: ankylosaurus.versions }} />
   </main>
 </div>

@@ -10,6 +10,9 @@ for (const locale of ['en', 'de']) {
     assert(html.includes(species === 'stegosaurus' ? 'Stegosaurus stenops' : 'Ankylosaurus magniventris'));
     assert.match(html, /<meta name="description" content="[^"]+"/);
     const anchors = html.match(/<a\b[^>]*>/g) ?? [];
+    const other = species === 'stegosaurus' ? 'ankylosaurus' : 'stegosaurus';
+    const specimenLink = anchors.find(a => a.includes(`href="/${locale}/specimens/${other}/"`));
+    assert(specimenLink?.includes('data-sveltekit-reload'), 'Reciprocal species link reloads without query/hash');
     for (const language of ['en', 'de']) {
       const link = anchors.find(a => a.includes(`href="/${language}/specimens/${species}/"`));
       assert(link?.includes(`lang="${language}"`) && link.includes(`hreflang="${language}"`));

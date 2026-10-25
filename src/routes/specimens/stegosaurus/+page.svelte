@@ -35,6 +35,9 @@
         {#if length}<p class="reconstruction-note">{text.scaleNote(new Intl.NumberFormat(locale).format(length.lengthMetres))}</p>{/if}
       </div>
     </div>
+    <nav class="specimen-navigation" aria-label={m.specimens()}>
+      <a href={localizeHref('/specimens/ankylosaurus/')} data-sveltekit-reload>{m.exploreAnkylosaurus()}</a>
+    </nav>
     <SpecimenViewer config={stegosaurus.config} {text} study={{ kind: 'none' }} />
   </main>
 </div>
