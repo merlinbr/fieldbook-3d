@@ -1,7 +1,7 @@
 import { Box3, Mesh, Vector3 } from 'three';
 import type { Object3D } from 'three';
 import { validateAnatomyRegions, validateMeshSelectors } from '../specimens/specimen-config.ts';
-import type { AnatomyId, AnatomyRegionConfig, MeshSelector } from '../specimens/specimen-config.ts';
+import type { AnatomyId, AnatomyRegionConfig, MeshSelector, StudyCapability } from '../specimens/specimen-config.ts';
 
 export type ResolvedAnatomyRegion = Readonly<{
   id: AnatomyId; pickMeshes: readonly Mesh[]; highlightMeshes: readonly Mesh[]; boundsMeshes: readonly Mesh[];
@@ -59,4 +59,21 @@ export function regionBounds(region: ResolvedAnatomyRegion): Box3 {
     if (mesh.geometry.boundingBox) bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
   }
   return bounds;
+}
+
+export type ResolvedStudyTargets = Readonly<{
+  ready: boolean;
+  regions: Readonly<Record<'armor' | 'tailClub', ResolvedAnatomyRegion | undefined>>;
+  meshes: Readonly<Record<'armor' | 'tailClub', readonly Mesh[]>>;
+}>;
+
+export function resolveStudyTargets(model: Object3D, regions: readonly ResolvedAnatomyRegion[], capability: StudyCapability): ResolvedStudyTargets | null {
+  if (capability.kind === 'none') return null;
+  const armor = regions.find(region => region.id === capability.targets.armor.regionId);
+  const tailClub = regions.find(region => region.id === capability.targets.tailClub.regionId);
+  const meshes = {
+    armor: armor?.available ? resolveMeshes(model, capability.targets.armor.emphasis) : [],
+    tailClub: tailClub?.available ? resolveMeshes(model, capability.targets.tailClub.emphasis) : []
+  };
+  return { ready: meshes.armor.length > 0 && meshes.tailClub.length > 0, regions: { armor, tailClub }, meshes };
 }

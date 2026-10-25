@@ -66,7 +66,7 @@
   const cinema = $derived(studying && !!studyState?.requestedPlaying && !studyState?.error && !leaving);
   const narrationLanguage = $derived(recording.version?.language === 'de' ? m.studyGerman() : m.studyEnglish());
   const canInspect = $derived(!studying || studyState?.phase === 'paused');
-  const targetsReady = $derived(config.study.kind === 'guided' && Object.values(config.study.targets).every(target => inspection?.regions.find(region => region.id === target.regionId)?.available));
+  const targetsReady = $derived(viewerState === 'ready' && !!inspection && !!viewer?.studyTargetsReady);
   const canStart = $derived(guided && viewerState === 'ready' && scaleReady && targetsReady && !!recording.version);
   const readiness = $derived(
     !guided ? '' : viewerState !== 'ready' ? (viewerState === 'loading' ? m.loading() : viewerState === 'error' ? m.error() : m.webglUnavailable()) :

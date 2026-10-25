@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Group, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 import { createLowPolyStegosaurus } from './stegosaurus-source.mjs';
 import { validateSpecimenConfig, validateViewerInputs } from '../src/lib/specimens/specimen-config.ts';
-import { resolveAnatomyRegions, regionBounds } from '../src/lib/viewer/anatomy-regions.ts';
+import { resolveAnatomyRegions, regionBounds, resolveStudyTargets } from '../src/lib/viewer/anatomy-regions.ts';
 import { stegosaurusConfig as config, stegosaurusText as text } from './specimen-config-fixtures.mjs';
 
 // A subtree-only implementation would lose the neck/tail plates; a broad armor
@@ -26,6 +26,22 @@ const duplicate = { ...config.regions[1], pick: [...config.regions[1].pick, ...c
 assert.equal(resolveAnatomyRegions(model, [duplicate])[0].pickMeshes.length, 19, 'selectors deduplicate membership');
 assert.equal(resolveAnatomyRegions(new Group(), config.regions)[0].available, false);
 assert.equal(resolveAnatomyRegions(model, [{ ...config.regions[0], anchor: { node: 'absent', point: [0, 0, 0] } }])[0].available, false);
+const guided = { kind: 'guided', targets: {
+  armor: { regionId: 'plates', emphasis: [{ kind: 'prefix', prefix: 'dorsalPlate_' }] },
+  tailClub: { regionId: 'spikes', emphasis: [{ kind: 'prefix', prefix: 'thagomizer_' }] }
+} };
+assert.equal(resolveStudyTargets(model, regions, config.study), null);
+const usable = resolveStudyTargets(model, regions, guided);
+assert.equal(usable.ready, true);
+assert.equal(usable.meshes.armor.length, 19);
+assert.equal(usable.meshes.tailClub.length, 4);
+for (const role of ['armor', 'tailClub']) {
+  const missing = resolveStudyTargets(model, regions, { ...guided, targets: {
+    ...guided.targets, [role]: { ...guided.targets[role], emphasis: [{ kind: 'mesh', name: 'absent-emphasis' }] }
+  } });
+  assert.equal(missing.ready, false, 'an available region with no emphasis subject must not start guided playback');
+  assert.equal(missing.meshes[role].length, 0);
+}
 assert.throws(() => resolveAnatomyRegions(model, [config.regions[0], { ...config.regions[0], id: 'otherHead' }]), /ambiguous/i);
 
 for (const lengthMetres of [0, -1, NaN, Infinity]) {

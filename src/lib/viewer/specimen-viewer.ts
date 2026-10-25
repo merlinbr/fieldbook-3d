@@ -28,8 +28,8 @@ import { orthographicHalfHeight } from './camera-fit.ts';
 import { validExplorationView } from './study-handoff.ts';
 import type { ExplorationView } from './study-handoff.ts';
 import { createAnatomyInspection } from './anatomy-inspection.ts';
-import { resolveAnatomyRegions, resolveMeshes, regionBounds } from './anatomy-regions.ts';
-import type { ResolvedAnatomyRegion } from './anatomy-regions.ts';
+import { resolveAnatomyRegions, resolveStudyTargets, regionBounds } from './anatomy-regions.ts';
+import type { ResolvedAnatomyRegion, ResolvedStudyTargets } from './anatomy-regions.ts';
 import type { AnatomyInspection, InspectionSnapshot } from './anatomy-inspection.ts';
 import type { AnatomyId, SpecimenViewerConfig } from '../specimens/specimen-config.ts';
 import { validateSpecimenConfig } from '../specimens/specimen-config.ts';
@@ -45,6 +45,7 @@ export type ViewerState = 'loading' | 'ready' | 'error' | 'unavailable';
 export type OrbitDirection = 'left' | 'right' | 'up' | 'down';
 export type ViewerHandle = {
   calibrationReady: boolean;
+  readonly studyTargetsReady: boolean;
   readonly scaleVisible: boolean;
   setScaleVisible(visible: boolean): boolean;
   reset(): void;
@@ -121,6 +122,7 @@ export function createSpecimenViewer(
   let dust: StudyDust | undefined;
   let model: Object3D | undefined;
   let resolvedRegions: readonly ResolvedAnatomyRegion[] = [];
+  let studyTargets: ResolvedStudyTargets | null = null;
   let modelScenes: Object3D[] = [];
   const scaleTarget = new Vector3();
   const scalePosition = new Vector3();
@@ -275,9 +277,8 @@ export function createSpecimenViewer(
   function calculateRegionFits(): void {
     if (!model || !controls) throw new RangeError('Specimen model is unavailable');
     if (config.study.kind !== 'guided') throw new RangeError('Specimen has no guided study');
-    const targets = config.study.targets;
-    const armorRegion = resolvedRegions.find(region => region.id === targets.armor.regionId);
-    const tailRegion = resolvedRegions.find(region => region.id === targets.tailClub.regionId);
+    const armorRegion = studyTargets?.regions.armor;
+    const tailRegion = studyTargets?.regions.tailClub;
     if (!armorRegion?.available || !tailRegion?.available) throw new RangeError('Study regions are unavailable');
     armorBounds.copy(regionBounds(armorRegion));
     tailClubBounds.copy(regionBounds(tailRegion));
@@ -779,6 +780,7 @@ export function createSpecimenViewer(
 
   handle = {
     calibrationReady: false,
+    get studyTargetsReady() { return studyTargetsReady; },
     get scaleVisible() { return standaloneScale; },
     setScaleVisible(visible) {
       if (disposed || state !== 'ready' || studyActive || !calibrationReady) return false;
@@ -868,13 +870,9 @@ export function createSpecimenViewer(
         try {
           model = gltf.scene;
           resolvedRegions = resolveAnatomyRegions(model, config.regions);
-          if (config.study.kind === 'guided') {
-            const targets = config.study.targets;
-            emphasis = createStudyEmphasis(model, {
-              armor: resolvedRegions.find(region => region.id === targets.armor.regionId)?.available ? resolveMeshes(model, targets.armor.emphasis) : [],
-              tailClub: resolvedRegions.find(region => region.id === targets.tailClub.regionId)?.available ? resolveMeshes(model, targets.tailClub.emphasis) : []
-            });
-          }
+          studyTargets = resolveStudyTargets(model, resolvedRegions, config.study);
+          studyTargetsReady = studyTargets?.ready ?? false;
+          if (studyTargets?.ready) emphasis = createStudyEmphasis(model, studyTargets.meshes);
           const wrapper = new Group();
           specimenWrapper = wrapper;
           scene.add(wrapper);
@@ -987,8 +985,6 @@ export function createSpecimenViewer(
           controls!.enableDamping = !motionPreference!.matches;
           controls!.enabled = true;
           inspection = createAnatomyInspection(model, resolvedRegions, camera, renderer!.domElement, (snapshot) => {
-            studyTargetsReady = config.study.kind === 'guided' && Object.values(config.study.targets).every(target =>
-              snapshot.regions.some(region => region.id === target.regionId && region.available));
             onInspection(snapshot);
           });
           renderer!.setAnimationLoop(render);

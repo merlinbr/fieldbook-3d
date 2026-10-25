@@ -86,7 +86,7 @@
 - [x] Browser-smoke Stegosaurus with the real shared viewer: three regions, plate/spike highlight membership, head exclusion, torso/flank nonselection, occlusion, orbit/zoom, click versus drag, keyboard selection/Escape/close, touch-style multi-pointer cancellation, reset, resize, narrow layout, and cleanup/remount. Test null scale and synthetic configured scale. Inspect network requests to prove no narration/study fetches, including a valid incoming Ankylosaurus query; verify query cleanup and absent study warnings/controls.
 - [x] Browser-smoke Ankylosaurus in English/German: inspection including armor gaps, standalone scale, all study chapters and captions, pause/resume/seek/exit, reset, reduced motion, resize, and paused language handoff. Test real missing/invalid recording configurations separately from no-study mode. Record any unavailable media/physical-device limitation instead of claiming coverage.
 - [x] Remove all temporary route/fixture scaffolding. Run the four required check commands again, then `rtk npm run build -- --mode development`; expect successful static output. Serve the static preview and verify the existing localized Ankylosaurus URLs after direct load/refresh. Inspect build output for temporary routes, binary media, and procedural generator leakage.
-- [ ] Run `rtk graphify update .`, review the final diff/status, and record actual verification evidence plus the remaining #16 integration boundary. Commit only issue #15 changes. Perform the required final code review before declaring implementation complete; do not publish comments or open a PR without the user's requested handoff scope.
+- [x] Run `rtk graphify update .`, review the final diff/status, and record actual verification evidence plus the remaining #16 integration boundary. Commit only issue #15 changes. Perform the required final code review before declaring implementation complete; do not publish comments or open a PR without the user's requested handoff scope.
 
 ## Execution recommendation
 
@@ -104,3 +104,19 @@ The user approved the design/plan and inline implementation on 2026-10-24. The i
 - Temporary routes, request capture, media-preference overrides, and gesture scaffolding were removed. Check fixtures remain solely under `checks/`. Ignored screenshots are in `media-dev/issue15-verification/` (`stegosaurus-scale.png`, `stegosaurus-mobile.png`, `ankylosaurus-static-scale.png`).
 
 Implementation rulings: extract the geometry-only Ankylosaurus configuration factory into `ankylosaurus-config.ts` so checks use production configuration without environment imports; retain the existing approved feature branch/current checkout; adapt Bash-only bookkeeping to native tools after sandbox denial. No production Stegosaurus route, length interpretation, narration, publication, or hosting change is included; #16 remains the integration boundary.
+
+## Independent review and follow-up, 2026-10-25
+
+The independent reviewer inspected `e3debb4..a08ab0b`, found no critical issues, one important readiness issue, and one minor malformed-input issue. The important issue was verified: available regions alone did not prove that configured study-emphasis selectors matched any meshes. `resolveStudyTargets` now resolves emphasis and region references once; the renderer's start guard and the Svelte Start readiness both consume its result. Empty emphasis for either required target prevents playback and shows the existing missing-target diagnostic.
+
+After the fix, all four required check commands passed (`check`: zero errors/warnings), the development-mode static build succeeded, and the final output scan again found no fixture, generator/exporter, or binary-media leakage. The rebuilt static viewer on port 4174 rendered the configured 8 m comparison and reported no browser errors. Graphify code update succeeded with 803 nodes and 1,292 edges. The latest ignored screenshot is `media-dev/issue15-verification/ankylosaurus-final.png`.
+
+Regression checks cover usable 19-plate/four-spike target membership, no-study capability, and missing emphasis in each guided role. The new check failed before implementation and passed afterward. The actual Svelte viewer was exercised with missing armor and tail-club emphasis in a temporary route on port 5174: Start stayed disabled, the diagnostic was visible, and anatomy inspection remained usable. The ordinary exhibit still started and paused real narration after standalone comparison. The temporary route was removed before final checks/build.
+
+Deferred minor: missing localized anatomy text can throw during server rendering before mounted input validation displays a viewer error. This affects malformed developer-supplied configuration; current exhibit text is complete. The review's inline-execution workflow defers minor findings rather than expanding the final fix pass.
+
+Review rulings for behaviors the reviewer considered but declined to judge:
+
+- Specimen configuration is fixed for each mounted viewer. Live replacement is outside this change; a future live-switching UI must explicitly remount or extend the lifecycle. Otherwise text and scene configuration could diverge.
+- Delivered assets use static geometry and object transforms. Dynamically added meshes, skinning, and morph-bound updates need a separate lifecycle contract before animated assets are introduced; otherwise bounds/membership could become stale.
+- Extreme positive lengths that exhaust floating-point precision are not plausible exhibit configuration. Finite-positive validation and normal scientific-scale inputs are covered; supporting pathological magnitudes would need additional geometry/range checks.
