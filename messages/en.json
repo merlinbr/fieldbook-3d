@@ -85,7 +85,15 @@
   "guidedCapability": "Guided field study + exploration",
   "explorationCapability": "Exploration only",
   "posterUnavailable": "Specimen image unavailable. You can still open the exhibit.",
-  "posterCaption": "A still view of the exhibit’s stylized model.",
+  "posterCaption": "The exhibit’s stylized model.",
   "specimenSource": "Scientific source",
-  "overviewFooter": "Observe closely. There is more to every specimen."
+  "overviewFooter": "Observe closely. There is more to every specimen.",
+  "viewIn3D": "View in 3D",
+  "closePreview": "Close 3D preview",
+  "retryPreview": "Retry 3D",
+  "previewLabel": "Interactive 3D preview of {name}",
+  "previewControls": "3D preview controls",
+  "previewInstructions": "Drag horizontally to rotate; swipe vertically to scroll the page. You can also use the rotation and Reset buttons. Open the exhibit for anatomy and study.",
+  "previewError": "The 3D preview could not be loaded. The image and exhibit remain available. Retry loads this specimen again.",
+  "previewUnavailable": "3D viewing is unavailable or the graphics context was lost. The image and exhibit remain available. You can retry."
 }

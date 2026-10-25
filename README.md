@@ -31,7 +31,7 @@ In a second terminal:
 npm run dev
 ```
 
-Open `/en/specimens/ankylosaurus/`, `/de/specimens/ankylosaurus/`, `/en/specimens/stegosaurus/` or `/de/specimens/stegosaurus/`. `/` redirects to English Ankylosaurus and contains a fallback link. Locale links reload the same specimen in the chosen language. During an Ankylosaurus study, a validated destination-link query transfers paused context and is consumed without another reload. Species links reload the destination exhibit without copying study context; navigating back starts ordinary exploration. No saved preferences, cookies, or language detection are required.
+Open `/en/overview/` or `/de/overview/` to choose a specimen, or visit `/en/specimens/ankylosaurus/`, `/de/specimens/ankylosaurus/`, `/en/specimens/stegosaurus/` or `/de/specimens/stegosaurus/` directly. `/` redirects to English Overview and contains a fallback link. Locale links reload the same page in the chosen language. During an Ankylosaurus study, a validated destination-link query transfers paused context and is consumed without another reload. Species links reload the destination exhibit without copying study context; navigating back starts ordinary exploration. No saved preferences, cookies, or language detection are required.
 
 ### Shared specimen viewer
 
@@ -81,9 +81,9 @@ For visual verification, run `npm run preview:stegosaurus` and open `/compare.ht
 
 `PUBLIC_STEGOSAURUS_MODEL_URL` is declared and illustrated in `.env.example` and is consumed by both localized Stegosaurus routes. Stegosaurus publication authorization and production hosting/URL are **unconfirmed**. The shared model-URL policy requires an absolute external HTTP(S) URL without credentials or loopback in production, and the asset host must allow CORS from the application origin. Local export/preview is not production deployment.
 
-## Overview — issue #24
+## Overview — issues #24 and #25
 
-The desktop Overview uses a light Field Guide index (36%) beside a dark Spotlight (64%). At **760 CSS px and below**, it switches between results and Spotlight rather than squeezing both panes together. The existing palette, Newsreader and Source Sans 3 apply in both languages. No search, filters, sample entries or on-demand 3D ship in this slice; those remain #25/#26.
+The desktop Overview uses a light Field Guide index (36%) beside a dark Spotlight (64%). At **760 CSS px and below**, it switches between results and Spotlight rather than squeezing both panes together. The existing palette, Newsreader and Source Sans 3 apply in both languages. Search, filters, sorting, pagination and larger-collection fixtures remain the separate #26 follow-up; the production catalog still contains only Ankylosaurus and Stegosaurus.
 
 `src/lib/specimens/catalog.ts` is the renderer-independent collection. Stable specimen IDs, exhibit paths, poster references, diet/period categories, separate localized age wording, NHM sources and guided/exploration capabilities live there. `content.ts` supplies the same authoritative names, descriptions, reconstruction notes and anatomy copy to both catalog and exhibits. Importing the catalog does not import a model renderer or recording configuration. Ankylosaurus offers its existing guided study; Stegosaurus is exploration-only.
 
@@ -93,7 +93,20 @@ Browsing state is transient URL/history state, not a saved preference: `#specime
 
 Posters are reproducible stills of the actual existing GLBs, not substitute artwork. Run `npm run prepare:posters` alongside `npm run media:dev`, download the two PNGs to ignored `media-dev/`, then use the external PNG endpoints. See [poster preparation, URL configuration and publication boundaries](docs/assets/overview-posters.md). Development defaults to the local media host. Production poster URLs are optional: unset URLs render text-only, failed images show a localized fallback, and names/descriptions/Explore remain usable. Configured poster URLs follow the existing HTTP(S), credential and non-loopback production policy. No generated media is copied into Git or application output, and no media publication or hosting authorization is implied.
 
-Run `npm run check:overview` for catalog/category/capability, malformed-state/return-isolation and poster URL-policy checks. After a static build, `npm run check:exhibit-pages` covers Overview and all four exhibit documents, metadata and native links. Browser acceptance includes both locales at 1360/1024/390/320px, 200% text enlargement, keyboard selection and visible focus, mobile focus/scroll/history restoration, locale/exhibit returns, missing posters, no-JavaScript links, no model/audio/WebGL on Overview, and the existing anatomy/scale/guided-study smoke. Generated screenshots stay in ignored `media-dev/`.
+Run `npm run check:overview` for catalog/category/capability, malformed-state/return-isolation and poster URL-policy checks. After a static build, `npm run check:exhibit-pages` covers Overview and all four exhibit documents, metadata and native links. The base Overview browser acceptance covered both locales at 1360/1024/390/320px, 200% text enlargement, keyboard selection and visible focus, mobile focus/scroll/history restoration, locale/exhibit returns, missing posters, no-JavaScript links, no model/audio/WebGL before activation, and the existing anatomy/scale/guided-study smoke. Generated screenshots stay in ignored `media-dev/`.
+
+### On-demand 3D Spotlight — issue #25
+
+**View in 3D / In 3D ansehen** imports the lightweight preview renderer and the selected exhibit's validated model configuration only when requested. Initial Overview and row browsing create no renderer and request no GLB or narration. The preview uses the same actual HTTP GLBs, original materials, warm exhibit lights and camera-fit margin as the detailed exhibits; resource disposal and light creation are shared helpers. It does not mount anatomy, scale comparison, field study, audio, animation or automatic rotation.
+
+Drag to rotate, or use the four native rotation buttons and Reset with pointer, touch or keyboard. Zoom and panning are disabled in this focused preview. Each orbit and resize refits projected model/plinth bounds, preserving the complete tail and plates. The canvas allows vertical touch scrolling (`touch-action: pan-y`), with horizontal gestures rotating the specimen. There is no continuous idle render loop, damping or reduced-motion autoplay.
+
+Closing preserves selection and returns focus to the persistent activation button. Species changes, mobile Back/results, a hidden document, page exit and component destruction cancel pending fetch/render work and release controls, observers, scene resources and the WebGL context. A late decode releases its own resources without restoring an abandoned preview. Every new species starts at its poster. Loading, fetch/CORS/decode failures and unavailable/lost WebGL have localized status and same-species Retry; poster, text, index and Explore remain usable throughout.
+
+With the static preview and real media server running, `npm run check:spotlight-browser` exercises EN/DE and both species, keyboard/pointer/touch rotation, pixel-identical reset, responsive resizing, canceled selection, repeated activation/cleanup, mobile Back, focus, navigation and recovery. It uses the same `FIELDBOOK_PLAYWRIGHT`, `FIELDBOOK_BROWSER_EXECUTABLE` and `FIELDBOOK_PREVIEW_URL` overrides as `check:browser`; no browser dependency is added to the application. Evidence goes to ignored `media-dev/issue25-verification/`.
+
+Observed on 2026-10-25: the built static site rendered both real GLBs in EN/DE at desktop, 900px and 390px; manual inspection also confirmed complete silhouettes at 1360px and mobile. A 320px/200% root-text/reduced-motion check for both species and languages had no horizontal overflow and all controls at least 44px high. Horizontal touch drag changed the rendered view; vertical touch swipe scrolled the page. Repeated close/reopen released all tracked WebGL contexts, restored application listener counts and left no continuing renderer RAF. Fault-injected fetch/decode and mismatched CORS headers, actual `WEBGL_lose_context`, and blocked context creation all recovered through Retry. Existing four-exhibit anatomy/scale and both narrated-study locale checks passed. Limits: Chromium/SwiftShader and emulated touch, not physical devices or a screen-reader session; local HTTP media and intercepted failure responses, not production CDN validation or media publication.
+
 
 ## Check and build
 
