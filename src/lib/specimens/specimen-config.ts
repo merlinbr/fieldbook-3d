@@ -24,7 +24,10 @@ export type SpecimenViewerConfig = Readonly<{
   id: string; modelUrl: string; regions: readonly AnatomyRegionConfig[];
   scale: SpecimenScale | null; study: StudyCapability;
 }>;
-export type SpecimenViewerText = Readonly<{ viewerLabel: string; anatomy: AnatomyText }>;
+export type SpecimenViewerText = Readonly<{
+  viewerLabel: string; anatomy: AnatomyText;
+  scaleLabel?: (length: string) => string;
+}>;
 export type StudyRecording = Readonly<{ version: StudyVersion | null; error: 'missing' | 'data' | null }>;
 export type ViewerStudy = Readonly<{ kind: 'none' }> | Readonly<{
   kind: 'guided'; recording: StudyRecording; versions: readonly StudyVersion[];

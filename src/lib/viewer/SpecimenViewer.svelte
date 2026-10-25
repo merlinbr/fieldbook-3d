@@ -62,6 +62,7 @@
   const studying = $derived(studyState?.active ?? false);
   const standaloneScale = $derived(!studying && scaleProjection.visible);
   const scaleLength = $derived(config.scale ? new Intl.NumberFormat(getLocale()).format(config.scale.lengthMetres) : '');
+  const scaleLabel = $derived(text.scaleLabel?.(scaleLength) ?? m.studyScaleSpecimen({ length: scaleLength }));
   const leaving = $derived(studyState?.phase === 'leaving');
   const cinema = $derived(studying && !!studyState?.requestedPlaying && !studyState?.error && !leaving);
   const narrationLanguage = $derived(recording.version?.language === 'de' ? m.studyGerman() : m.studyEnglish());
@@ -390,7 +391,7 @@
       <p class="study-status" aria-live="polite" aria-atomic="true">{studyStatus}{chapterStatus ? ` — ${chapterStatus}` : ''}</p>
       {#if studyState.chapter === 'scale'}
         <div class="scale-legend" role="group" aria-label={m.studyScaleLegend()}>
-          <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen({ length: scaleLength })}</p>
+          <p><span aria-hidden="true">1</span>{scaleLabel}</p>
           <p><span aria-hidden="true">2</span>{m.studyScaleHuman()}</p>
         </div>
       {/if}
@@ -430,7 +431,7 @@
   {/if}
   {#if standaloneScale}
     <div class="scale-legend" role="group" aria-label={m.studyScaleLegend()}>
-      <p><span aria-hidden="true">1</span>{m.studyScaleSpecimen({ length: scaleLength })}</p>
+      <p><span aria-hidden="true">1</span>{scaleLabel}</p>
       <p><span aria-hidden="true">2</span>{m.studyScaleHuman()}</p>
     </div>
   {/if}
