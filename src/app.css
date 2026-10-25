@@ -361,13 +361,14 @@ h1 {
 .study-status { margin-top: 0.5rem; }
 .study-caption { margin-top: 0.5rem; min-height: 3rem; max-width: 65ch; font-size: 1.125rem; }
 .study-transport { container-type: inline-size; margin-top: 0.5rem; }
-.study-playback { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
-.study-playback button { min-width: 0; padding: 0.65rem 0.5rem; overflow-wrap: anywhere; }
+.study-playback { display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)); gap: 0.5rem; }
+.study-playback button { min-width: 44px; padding: 0.65rem 0.5rem; overflow-wrap: normal; }
 .study-playback .study-play { padding-inline: 0.25rem; border: 2px solid var(--amber); color: var(--amber); font-weight: 700; }
 @container (max-width: 17rem) {
   .study-playback { grid-template-columns: minmax(0, 1fr); }
 }
 .study-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.study-controls button { overflow-wrap: normal; }
 .study-controls button[aria-pressed='true'] { border-color: var(--amber); color: var(--amber); }
 .study-chapter-toggle { display: inline-flex; }
 .study-transport-compact { display: none; }
@@ -417,7 +418,7 @@ body:has(.specimen-viewer.cinema) { background-color: #101410; }
   .world-context { gap: 0.5rem 1rem; margin-top: 0.5rem; padding-block: 0.5rem; }
   .study-timeline input { order: 1; }
   .study-time { order: 2; }
-  .study-controls button { flex: 1 1 5rem; min-width: 44px; }
+  .study-controls button { flex: 1 0 auto; min-width: 44px; }
   .study-transport-full { display: none; }
   .study-transport-compact { display: inline; }
 }
