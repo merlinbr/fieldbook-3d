@@ -22,6 +22,7 @@
   let searchDraft = $state('');
   let enhanced = $state(false);
   let narrow = $state(false);
+  let filtersOpen = $state(false);
   let heading: HTMLHeadingElement;
   const results = $derived(discoverSpecimens(entries, selection, locale));
   const selected = $derived(results.selected);
@@ -87,11 +88,19 @@
     else pushState(overviewHash(selection), {});
   }
 
+  function toggleFilters(): void {
+    if (filtersOpen && document.getElementById('discovery-panel')?.contains(document.activeElement)) {
+      document.getElementById('discovery-filters')?.focus();
+    }
+    filtersOpen = !filtersOpen;
+  }
+
   async function clearConstraint(key: 'query' | 'diet' | 'period'): Promise<void> {
     if (key === 'query') searchDraft = '';
     update({ [key]: key === 'query' ? '' : null });
     await tick();
-    document.getElementById(`discovery-${key}`)?.focus();
+    const target = key === 'query' ? 'discovery-query' : !filtersOpen ? 'discovery-filters' : key === 'diet' ? 'discovery-diet-all' : 'discovery-period';
+    document.getElementById(target)?.focus();
   }
 
   async function clearAll(): Promise<void> {
@@ -162,27 +171,37 @@
       </div>
       {#if enhanced}
         <form class="discovery-controls" role="search" onsubmit={(event) => event.preventDefault()}>
-          <label for="discovery-query">{m.searchNames()}</label>
-          <input id="discovery-query" type="search" value={searchDraft} oninput={(event) => { searchDraft = event.currentTarget.value; update({ query: searchDraft }, true); }} />
-          <label for="discovery-diet">{m.diet()}</label>
-          <select id="discovery-diet" value={selection.diet ?? ''} onchange={(event) => update({ diet: event.currentTarget.value as DietId || null })}>
-            <option value="">{m.allDiets()}</option>
-            <option value="herbivore">{m.dietPlants()}</option>
-            <option value="carnivore">{m.dietMeat()}</option>
-            <option value="omnivore">{m.dietMixed()}</option>
-          </select>
-          <label for="discovery-period">{m.whenTheyLived()}</label>
-          <select id="discovery-period" value={selection.period ?? ''} onchange={(event) => update({ period: event.currentTarget.value as PeriodId || null })}>
-            <option value="">{m.allPeriods()}</option>
-            <option value="triassic">{m.triassic()}</option>
-            <option value="jurassic">{m.jurassic()}</option>
-            <option value="cretaceous">{m.cretaceous()}</option>
-          </select>
-          <label for="discovery-sort">{m.sortBy()}</label>
-          <select id="discovery-sort" value={selection.sort} onchange={(event) => update({ sort: event.currentTarget.value as OverviewState['sort'] })}>
-            <option value="name-asc">{m.nameAscending()}</option>
-            <option value="name-desc">{m.nameDescending()}</option>
-          </select>
+          <div class="search-row">
+            <div class="name-search">
+              <label for="discovery-query">{m.searchNames()}</label>
+              <input id="discovery-query" type="search" value={searchDraft} oninput={(event) => { searchDraft = event.currentTarget.value; update({ query: searchDraft }, true); }} />
+            </div>
+            <button id="discovery-filters" type="button" aria-expanded={filtersOpen} aria-controls="discovery-panel" onclick={toggleFilters}>
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M7 12h10M10 17h4" /></svg>
+              {m.filters()}
+              <span aria-hidden="true">{filtersOpen ? '−' : '+'}</span>
+            </button>
+          </div>
+          <div id="discovery-panel" hidden={!filtersOpen}>
+            <fieldset id="discovery-diet">
+              <legend>{m.diet()}</legend>
+              <div class="diet-options">
+                <button id="discovery-diet-all" type="button" data-diet="" aria-pressed={selection.diet === null} onclick={() => update({ diet: null })}>{m.allDiets()}</button>
+                {#each ['herbivore', 'carnivore', 'omnivore'] as diet}
+                  <button type="button" data-diet={diet} aria-pressed={selection.diet === diet} onclick={() => update({ diet: diet as DietId })}>{dietLabel(diet as DietId)}</button>
+                {/each}
+              </div>
+            </fieldset>
+            <div class="period-filter">
+              <label for="discovery-period">{m.whenTheyLived()}</label>
+              <select id="discovery-period" value={selection.period ?? ''} onchange={(event) => update({ period: event.currentTarget.value as PeriodId || null })}>
+                <option value="">{m.allPeriods()}</option>
+                <option value="triassic">{m.triassic()}</option>
+                <option value="jurassic">{m.jurassic()}</option>
+                <option value="cretaceous">{m.cretaceous()}</option>
+              </select>
+            </div>
+          </div>
         </form>
         {#if selection.query || selection.diet || selection.period}
           <div class="active-constraints" role="group" aria-label={m.activeConstraints()}>
@@ -282,8 +301,19 @@
   .eyebrow { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; }
   .guide-intro h1 { margin-block: 0.75rem; font-size: clamp(2.5rem, 4vw, 4rem); }
   .guide-deck { max-width: 24rem; font-size: 1.125rem; color: var(--olive); }
-  .discovery-controls { display: grid; gap: 0.5rem; margin-top: 1.5rem; }
-  .discovery-controls label { font-weight: 600; margin-top: 0.5rem; }
+  .discovery-controls { margin-top: 1.5rem; }
+  .search-row { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; }
+  .name-search { display: grid; flex: 1 1 8rem; min-width: 0; gap: 0.5rem; }
+  .discovery-controls :is(label, legend) { font-weight: 600; }
+  #discovery-filters { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; }
+  #discovery-filters svg { width: 1.125rem; height: 1.125rem; flex: none; }
+  #discovery-panel:not([hidden]) { display: grid; gap: 1rem; margin-top: 1rem; }
+  #discovery-diet { min-width: 0; margin: 0; padding: 0; border: 0; }
+  #discovery-diet legend { padding: 0; margin-bottom: 0.5rem; }
+  .diet-options { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .field-guide .diet-options button { border-color: var(--stone); }
+  .field-guide .diet-options button[aria-pressed="true"] { color: var(--bone); background: var(--olive); border-color: var(--olive); }
+  .period-filter { display: grid; gap: 0.5rem; }
   .discovery-controls input, .discovery-controls select { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid var(--olive); border-radius: 0; padding: 0.6rem; color: var(--charcoal); background: var(--bone); font: inherit; }
   .field-guide button { color: var(--charcoal); background: transparent; border: 1px solid var(--olive); }
   .field-guide :is(button, input, select):focus-visible { outline: 3px solid var(--olive); outline-offset: 3px; }

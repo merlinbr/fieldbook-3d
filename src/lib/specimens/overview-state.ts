@@ -15,7 +15,6 @@ export function readOverviewState(hash: string, catalog: readonly Specimen[] = s
     query: params.get('query') ?? '',
     diet: diet === 'herbivore' || diet === 'carnivore' || diet === 'omnivore' ? diet : null,
     period: period === 'triassic' || period === 'jurassic' || period === 'cretaceous' ? period : null,
-    sort: params.get('sort') === 'name-desc' ? 'name-desc' : 'name-asc',
     page: params.has('page') ? Number(params.get('page')) : 1
   }, locale).state;
 }
@@ -27,7 +26,6 @@ export function overviewHash(state: OverviewState): string {
   if (state.query.trim()) params.set('query', state.query.trim());
   if (state.diet) params.set('diet', state.diet);
   if (state.period) params.set('period', state.period);
-  if (state.sort !== 'name-asc') params.set('sort', state.sort);
   if (state.page !== 1) params.set('page', String(state.page));
   return `#${params}`;
 }

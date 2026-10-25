@@ -3,7 +3,7 @@ import { readOverviewState, overviewHash, exhibitOverviewHash, returnToOverview 
 import { defaultOverviewState } from '../src/lib/specimens/catalog-query.ts';
 import { discoveryFixtures } from './fixtures/discovery-catalog.ts';
 
-const selected = { ...defaultOverviewState, specimen: 'stegosaurus', view: 'spotlight', index: 312, query: 'STENOPS', diet: 'herbivore', period: 'jurassic', sort: 'name-desc' };
+const selected = { ...defaultOverviewState, specimen: 'stegosaurus', view: 'spotlight', index: 312, query: 'STENOPS', diet: 'herbivore', period: 'jurassic' };
 assert.deepEqual(readOverviewState(overviewHash(selected)), selected);
 assert.deepEqual(readOverviewState('#specimen=unknown&view=spotlight&index=NaN&diet=dragon&period=future&sort=garbage&page=Infinity'), { ...defaultOverviewState, view: 'spotlight' });
 assert.deepEqual(readOverviewState('#specimen=stegosaurus&view=invalid&index=-20&page=2.5'), { ...defaultOverviewState, specimen: 'stegosaurus' });
@@ -11,8 +11,17 @@ assert.equal(returnToOverview('stegosaurus', exhibitOverviewHash(selected)), ove
 assert.equal(readOverviewState(returnToOverview('ankylosaurus', exhibitOverviewHash(selected))).specimen, 'stegosaurus', 'Do not show a specimen excluded by the retained query');
 assert.equal(returnToOverview('stegosaurus', '#study=playing&time=42'), overviewHash({ ...defaultOverviewState, specimen: 'stegosaurus', view: 'spotlight' }));
 assert(!exhibitOverviewHash(selected).includes('study'));
-const large = { ...defaultOverviewState, specimen: 'layout-sample-45', page: 6, index: 1000, sort: 'name-desc', query: 'sample', view: 'results' };
+const large = { ...defaultOverviewState, specimen: 'layout-sample-45', page: 6, index: 1000, query: 'sample', view: 'results' };
 assert.deepEqual(readOverviewState(overviewHash(large), discoveryFixtures, 'de'), large);
+const legacy = readOverviewState('#sort=name-desc&query=sample&page=2&specimen=layout-sample-26&index=456&view=spotlight', discoveryFixtures);
+assert.deepEqual(legacy, { ...defaultOverviewState, query: 'sample', page: 2, specimen: 'layout-sample-26', index: 456, view: 'spotlight' });
+assert(!overviewHash(legacy).includes('sort='), 'Normalized fragments remove legacy sort');
+assert.deepEqual(readOverviewState(overviewHash(legacy), discoveryFixtures), legacy, 'Remaining context round-trips after dropping legacy sort');
+const legacyFilters = readOverviewState('#sort=name-desc&query=sample&diet=carnivore&period=triassic&specimen=layout-sample-26&index=456&view=spotlight', discoveryFixtures);
+assert.deepEqual(legacyFilters, { ...defaultOverviewState, query: 'sample', diet: 'carnivore', period: 'triassic', specimen: 'layout-sample-26', index: 456, view: 'spotlight' });
+assert.deepEqual(readOverviewState('#sort=name-desc', discoveryFixtures), defaultOverviewState, 'Legacy descending fragments cannot alter A-Z default discovery');
+const legacyExhibitContext = '#overview=' + encodeURIComponent('sort=name-desc&query=STENOPS&diet=herbivore&period=jurassic&page=1&specimen=stegosaurus&index=789&view=spotlight');
+assert.equal(returnToOverview('stegosaurus', legacyExhibitContext), overviewHash({ ...defaultOverviewState, specimen: 'stegosaurus', index: 789, query: 'STENOPS', diet: 'herbivore', period: 'jurassic', view: 'spotlight' }));
 const empty = readOverviewState('#query=impossible&specimen=stegosaurus&page=7&view=spotlight');
 assert.equal(empty.specimen, null);
 assert.equal(empty.page, 1);
