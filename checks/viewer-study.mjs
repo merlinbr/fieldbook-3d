@@ -4,7 +4,7 @@ import { resolveStudyContext } from '../src/lib/viewer/viewer-study.ts';
 import { parseStudyVersion } from '../src/lib/viewer/study-data.ts';
 import { encodeStudyHandoff } from '../src/lib/viewer/study-handoff.ts';
 import { createAnkylosaurusConfig } from '../src/lib/specimens/ankylosaurus-config.ts';
-import { stegosaurusConfig } from './specimen-config-fixtures.mjs';
+import { createStegosaurusConfig } from '../src/lib/specimens/stegosaurus-config.ts';
 
 const en = parseStudyVersion(readFileSync(new URL('../docs/assets/ankylosaurus-narration.en.json', import.meta.url), 'utf8')).version;
 const de = parseStudyVersion(readFileSync(new URL('../docs/assets/ankylosaurus-narration.de.json', import.meta.url), 'utf8')).version;
@@ -14,8 +14,10 @@ const guided = { kind: 'guided', recording: { version: en, error: null }, versio
 const raw = encodeStudyHandoff({ specimen: 'ankylosaurus', version: en.id, time: 0,
   chapter: 'meet', captions: true, view: { azimuth: 0, polar: 1, zoom: 1 } });
 const none = { incoming: null, handoffFailed: false };
+const stegosaurusConfig = createStegosaurusConfig('https://media.example/stegosaurus.glb');
 assert.deepEqual(resolveStudyContext(stegosaurusConfig, { kind: 'none' }, [raw]), none, 'exploration does not borrow a valid study');
 assert.deepEqual(resolveStudyContext(stegosaurusConfig, { kind: 'none' }, [raw, raw]), none);
+assert.deepEqual(resolveStudyContext(stegosaurusConfig, { kind: 'none' }, ['malformed']), none);
 assert.deepEqual(resolveStudyContext(config, guided, []), none);
 assert.equal(resolveStudyContext(config, guided, [raw]).incoming.version, en.id);
 assert.equal(resolveStudyContext(config, { ...guided, recording: { version: de, error: null } }, [raw]).incoming.version, de.id);
