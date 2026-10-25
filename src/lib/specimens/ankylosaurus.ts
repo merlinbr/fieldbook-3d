@@ -1,36 +1,10 @@
 import { PUBLIC_ANKYLOSAURUS_MODEL_URL, PUBLIC_ANKYLOSAURUS_STUDY_VERSION, PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE } from '$app/env/public';
 import type { AnatomyText } from './specimen-config.ts';
 import { createAnkylosaurusConfig } from './ankylosaurus-config.ts';
+import { resolveModelUrl } from './model-url.ts';
 import { resolveStudyVersion } from '../viewer/study-data.ts';
 
 const development = import.meta.env.MODE === 'development';
-const configuredUrl = PUBLIC_ANKYLOSAURUS_MODEL_URL;
-
-function modelUrl(): string {
-  const value = configuredUrl ?? (development ? 'http://127.0.0.1:5194/ankylosaurus.glb' : undefined);
-  const requirement = 'Set PUBLIC_ANKYLOSAURUS_MODEL_URL to an absolute HTTP(S) URL without credentials. Production requires externally hosted media; for a local static smoke build, use --mode development.';
-
-  if (!value) throw new Error(requirement);
-
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error(requirement);
-  }
-
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
-    throw new Error(requirement);
-  }
-
-  const hostname = url.hostname.replace(/\.$/, '');
-  const loopback = hostname === 'localhost' || hostname.endsWith('.localhost') ||
-    hostname.startsWith('127.') || hostname === '[::1]' ||
-    /^\[::ffff:7f[\da-f]{2}:[\da-f]{1,4}\]$/.test(hostname);
-
-  if (!development && loopback) throw new Error(requirement);
-  return url.href;
-}
 
 const study = {
   en: resolveStudyVersion('en', PUBLIC_ANKYLOSAURUS_STUDY_VERSION, PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE),
@@ -40,7 +14,10 @@ const study = {
 export const ankylosaurus = {
   id: 'ankylosaurus',
   scientificName: 'Ankylosaurus magniventris',
-  config: createAnkylosaurusConfig(modelUrl()),
+  config: createAnkylosaurusConfig(resolveModelUrl(PUBLIC_ANKYLOSAURUS_MODEL_URL, {
+    development, environmentVariable: 'PUBLIC_ANKYLOSAURUS_MODEL_URL',
+    developmentUrl: 'http://127.0.0.1:5194/ankylosaurus.glb'
+  })),
   study,
   versions: Object.values(study).map((recording) => recording.version).filter((version) => version !== null)
 } as const;
