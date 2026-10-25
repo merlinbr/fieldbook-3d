@@ -85,6 +85,7 @@ The GLB's roughly 9.100000148-unit X extent remains raw geometry. Existing compa
 | Exhibit claim | Source and interpretation |
 | --- | --- |
 | Small plant-eating head with tiny teeth | [NHM expert Q&A](https://www.nhm.ac.uk/discover/stegosaurus-interview-dinosaur-expert.html); no inferred chewing performance. |
+| Very small brain relative to its large body | [National Park Service Stegosaurus overview](https://www.nps.gov/dino/learn/nature/stegosaurus-ungulates.htm); proportional size, without a definitive smallest-brain ranking. |
 | Bony plates; function uncertain, display and temperature regulation possible | [NHM expert Q&A](https://www.nhm.ac.uk/discover/stegosaurus-interview-dinosaur-expert.html); hypotheses are not presented as established functions. |
 | Model's nineteen plates and four spikes | [NHM Sophie release](https://www.nhm.ac.uk/press-office/press-releases/world_s-most-complete-stegosaurus-goes-on-show.html); a count reference, not a claim that the model reconstructs Sophie's age or proportions. |
 | Tail spikes may have helped in defense | [AMNH exhibit](https://www.amnh.org/exhibitions/dinosaurs-ancient-fossils/display-or-defense/colorful-display); tentative interpretation, separate from plate function. |
