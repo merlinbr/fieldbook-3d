@@ -11,7 +11,7 @@
   const text = ankylosaurusText[locale];
   let specimenViewer: SpecimenViewer | undefined;
   let overviewContext = $state('');
-  onMount(() => { overviewContext = returnToOverview('ankylosaurus', location.hash); });
+  onMount(() => { overviewContext = returnToOverview('ankylosaurus', location.hash, locale); });
 
   function changeLanguage(event: MouseEvent): void {
     // Native modified clicks open a separate document without interrupting this one.

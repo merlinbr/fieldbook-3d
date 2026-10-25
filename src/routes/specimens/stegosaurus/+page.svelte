@@ -11,7 +11,7 @@
   const text = stegosaurusText[locale];
   const length = stegosaurus.config.scale;
   let overviewContext = $state('');
-  onMount(() => { overviewContext = returnToOverview('stegosaurus', location.hash); });
+  onMount(() => { overviewContext = returnToOverview('stegosaurus', location.hash, locale); });
   function changeLanguage(event: MouseEvent): void {
     if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     if (location.hash.startsWith('#overview=')) (event.currentTarget as HTMLAnchorElement).hash = location.hash;
