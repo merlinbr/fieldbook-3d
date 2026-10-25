@@ -20,6 +20,7 @@ export const stegosaurusText = {
     name: 'Stegosaurus',
     description: 'A plant-eating dinosaur with tall back plates and four tail spikes.',
     reconstruction: 'A stylized reconstruction.',
+    scaleLabel: (length: string) => `Represented length: ${length} m`,
     scaleNote: (length: string) => `Shown at a represented length of ${length} m for comparison; this stylized model is not a measured reconstruction of a particular individual.`,
     anatomy: {
       head: { label: 'Head', heading: 'A small head for a plant-eater', body: 'Stegosaurus ate plants. Its small head had jaws lined with tiny teeth.' },
@@ -32,6 +33,7 @@ export const stegosaurusText = {
     name: 'Stegosaurus',
     description: 'Ein pflanzenfressender Dinosaurier mit hohen Rückenplatten und vier Schwanzstacheln.',
     reconstruction: 'Eine stilisierte Rekonstruktion.',
+    scaleLabel: (length: string) => `Dargestellte Länge: ${length} m`,
     scaleNote: (length: string) => `Zum Vergleich mit einer dargestellten Länge von ${length} m gezeigt; dieses stilisierte Modell ist keine vermessene Rekonstruktion eines bestimmten Individuums.`,
     anatomy: {
       head: { label: 'Kopf', heading: 'Ein kleiner Kopf für Pflanzenkost', body: 'Stegosaurus fraß Pflanzen. In den Kiefern seines kleinen Kopfes saßen winzige Zähne.' },
