@@ -14,6 +14,7 @@
     "check:exhibit-pages": "node checks/exhibit-pages.mjs",
     "check:overview": "node checks/catalog.mjs && node checks/overview-state.mjs && node checks/poster-url.mjs",
     "check:browser": "node checks/exhibit-browser.cjs",
+    "check:spotlight-browser": "node checks/spotlight-browser.cjs",
     "check:camera": "node checks/camera-fit.mjs && node checks/scale-comparison.mjs",
     "check:anatomy": "node checks/anatomy-regions.mjs && node checks/anatomy-input.mjs && node checks/anatomy-inspection.mjs",
     "check:study": "node checks/viewer-study.mjs && node checks/field-study.mjs && node checks/study-presentation.mjs && node checks/study-dust.mjs",

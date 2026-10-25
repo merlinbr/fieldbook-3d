@@ -2,12 +2,8 @@ import {
   ACESFilmicToneMapping,
   Box3,
   BoxGeometry,
-  BufferGeometry,
   Color,
-  DirectionalLight,
   Group,
-  HemisphereLight,
-  Material,
   MathUtils,
   Mesh,
   MeshStandardMaterial,
@@ -18,13 +14,14 @@ import {
   Scene,
   Sphere,
   SpotLight,
-  Texture,
   Vector3,
   WebGLRenderer
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { orthographicHalfHeight } from './camera-fit.ts';
+import { disposeViewerResources } from './rendering-resources.ts';
+import { createWarmExhibitLighting } from './rendering-stage.ts';
 import { validExplorationView } from './study-handoff.ts';
 import type { ExplorationView } from './study-handoff.ts';
 import { createAnatomyInspection } from './anatomy-inspection.ts';
@@ -65,35 +62,6 @@ const ORBIT_STEP = Math.PI / 12;
 
 
 
-function disposeResources(roots: readonly Object3D[]): void {
-  const geometries = new Set<BufferGeometry>();
-  const materials = new Set<Material>();
-  const textures = new Set<Texture>();
-  const images = new Set<ImageBitmap>();
-
-  for (const root of roots) {
-    root.traverse((object) => {
-      if (!(object instanceof Mesh)) return;
-      geometries.add(object.geometry);
-      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-        materials.add(material);
-      }
-    });
-  }
-  for (const material of materials) {
-    for (const value of Object.values(material)) {
-      if (value instanceof Texture) textures.add(value);
-    }
-  }
-  for (const texture of textures) {
-    const image = texture.image;
-    if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) images.add(image);
-    texture.dispose();
-  }
-  for (const image of images) image.close();
-  for (const material of materials) material.dispose();
-  for (const geometry of geometries) geometry.dispose();
-}
 
 export function createSpecimenViewer(
   container: HTMLElement,
@@ -105,9 +73,7 @@ export function createSpecimenViewer(
   const scene = new Scene();
   scene.background = new Color('#22251f');
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0.01, 20);
-  const hemisphere = new HemisphereLight('#fffae7', '#626851', 2);
-  const key = new DirectionalLight('#fff7df', 2.8);
-  const fill = new DirectionalLight('#e9f0dc', 0.8);
+  const { hemisphere, key, fill } = createWarmExhibitLighting();
   const spotlight = new SpotLight('#fff1ce', 0, 0, Math.PI / 5, 0.8, 0);
   spotlight.visible = false;
   scene.add(hemisphere, key, key.target, fill, fill.target);
@@ -753,7 +719,7 @@ export function createSpecimenViewer(
     controls?.dispose();
     comparison?.dispose();
     comparison = undefined;
-    disposeResources([scene, ...modelScenes]);
+    disposeViewerResources([scene, ...modelScenes]);
     key.shadow.dispose();
     scene.clear();
     modelScenes = [];
@@ -863,7 +829,7 @@ export function createSpecimenViewer(
       config.modelUrl,
       (gltf) => {
         if (disposed) {
-          disposeResources(gltf.scenes);
+          disposeViewerResources(gltf.scenes);
           return;
         }
         modelScenes = gltf.scenes;

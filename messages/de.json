@@ -85,7 +85,15 @@
   "guidedCapability": "Geführte Feldstudie + freies Erkunden",
   "explorationCapability": "Nur freies Erkunden",
   "posterUnavailable": "Das Bild ist nicht verfügbar. Du kannst die Ausstellung trotzdem öffnen.",
-  "posterCaption": "Eine Standaufnahme des stilisierten Ausstellungsmodells.",
+  "posterCaption": "Das stilisierte Ausstellungsmodell.",
   "specimenSource": "Wissenschaftliche Quelle",
-  "overviewFooter": "Schau genau hin. Jedes Exemplar erzählt mehr."
+  "overviewFooter": "Schau genau hin. Jedes Exemplar erzählt mehr.",
+  "viewIn3D": "In 3D ansehen",
+  "closePreview": "3D-Vorschau schließen",
+  "retryPreview": "3D erneut versuchen",
+  "previewLabel": "Interaktive 3D-Vorschau von {name}",
+  "previewControls": "Steuerung der 3D-Vorschau",
+  "previewInstructions": "Waagerecht ziehen zum Drehen; senkrecht wischen zum Scrollen der Seite. Du kannst auch die Drehschaltflächen und Ansicht zurücksetzen nutzen. Körperteile und Feldstudie findest du in der Ausstellung.",
+  "previewError": "Die 3D-Vorschau konnte nicht geladen werden. Bild und Ausstellung bleiben verfügbar. Erneutes Versuchen lädt dieses Exemplar noch einmal.",
+  "previewUnavailable": "Die 3D-Ansicht ist nicht verfügbar oder der Grafikkontext ging verloren. Bild und Ausstellung bleiben verfügbar. Du kannst es erneut versuchen."
 }

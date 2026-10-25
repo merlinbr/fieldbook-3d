@@ -8,6 +8,7 @@
   import { resolvePosterUrl } from '#lib/specimens/poster-url.ts';
   import { exhibitOverviewHash, overviewHash, readOverviewState, type OverviewState } from '#lib/specimens/overview-state.ts';
   import Poster from '#lib/overview/Poster.svelte';
+  import SpotlightPreview from '#lib/overview/SpotlightPreview.svelte';
 
   const locale = getLocale();
   const development = import.meta.env.MODE === 'development';
@@ -17,6 +18,7 @@
   };
   let selection = $state<OverviewState>({ specimen: 'ankylosaurus', view: 'results', index: 0 });
   let enhanced = $state(false);
+  let narrow = $state(false);
   let heading: HTMLHeadingElement;
   const selected = $derived(getSpecimen(selection.specimen));
   const text = $derived(selected.text[locale]);
@@ -60,11 +62,21 @@
   onMount(() => {
     selection = readOverviewState(location.hash);
     enhanced = true;
+    const breakpoint = matchMedia('(max-width: 760px)');
+    const resize = () => {
+      narrow = breakpoint.matches;
+      if (narrow && selection.view === 'results' && document.getElementById('spotlight')?.contains(document.activeElement)) {
+        void restoreFocus();
+      }
+    };
+    resize();
+    breakpoint.addEventListener('change', resize);
     const restore = () => { selection = readOverviewState(location.hash); void restoreFocus(); };
     window.addEventListener('popstate', restore);
     window.addEventListener('hashchange', restore);
     if (selection.view === 'results' && selection.index) void restoreFocus();
     return () => {
+      breakpoint.removeEventListener('change', resize);
       window.removeEventListener('popstate', restore);
       window.removeEventListener('hashchange', restore);
     };
@@ -123,7 +135,13 @@
         <p class="scientific-name"><i>{selected.scientificName}</i></p>
       </div>
       <figure>
-        <Poster src={posters[selected.id]} alt={text.posterAlt} />
+        {#if enhanced}
+          {#key selected.id}
+            <SpotlightPreview specimen={selected.id} poster={posters[selected.id]} alt={text.posterAlt} name={text.name} visible={!narrow || selection.view === 'spotlight'} />
+          {/key}
+        {:else}
+          <Poster src={posters[selected.id]} alt={text.posterAlt} />
+        {/if}
         <figcaption>{m.posterCaption()}</figcaption>
       </figure>
       <div class="spotlight-details">
