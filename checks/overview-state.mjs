@@ -1,12 +1,22 @@
 import assert from 'node:assert/strict';
 import { readOverviewState, overviewHash, exhibitOverviewHash, returnToOverview } from '../src/lib/specimens/overview-state.ts';
+import { defaultOverviewState } from '../src/lib/specimens/catalog-query.ts';
+import { discoveryFixtures } from './fixtures/discovery-catalog.ts';
 
-const selected = { specimen: 'stegosaurus', view: 'spotlight', index: 312 };
+const selected = { ...defaultOverviewState, specimen: 'stegosaurus', view: 'spotlight', index: 312, query: 'STENOPS', diet: 'herbivore', period: 'jurassic', sort: 'name-desc' };
 assert.deepEqual(readOverviewState(overviewHash(selected)), selected);
-assert.deepEqual(readOverviewState('#specimen=unknown&view=spotlight&index=NaN'), { specimen: 'ankylosaurus', view: 'spotlight', index: 0 });
-assert.deepEqual(readOverviewState('#specimen=stegosaurus&view=invalid&index=-20'), { specimen: 'stegosaurus', view: 'results', index: 0 });
+assert.deepEqual(readOverviewState('#specimen=unknown&view=spotlight&index=NaN&diet=dragon&period=future&sort=garbage&page=Infinity'), { ...defaultOverviewState, view: 'spotlight' });
+assert.deepEqual(readOverviewState('#specimen=stegosaurus&view=invalid&index=-20&page=2.5'), { ...defaultOverviewState, specimen: 'stegosaurus' });
 assert.equal(returnToOverview('stegosaurus', exhibitOverviewHash(selected)), overviewHash(selected));
-assert.equal(returnToOverview('ankylosaurus', exhibitOverviewHash(selected)), overviewHash({ ...selected, specimen: 'ankylosaurus' }));
-assert.equal(returnToOverview('stegosaurus', '#study=playing&time=42'), overviewHash({ ...selected, index: 0 }));
+assert.equal(readOverviewState(returnToOverview('ankylosaurus', exhibitOverviewHash(selected))).specimen, 'stegosaurus', 'Do not show a specimen excluded by the retained query');
+assert.equal(returnToOverview('stegosaurus', '#study=playing&time=42'), overviewHash({ ...defaultOverviewState, specimen: 'stegosaurus', view: 'spotlight' }));
 assert(!exhibitOverviewHash(selected).includes('study'));
-console.log('Overview selection, unknown-state fallback, browsing return and cross-specimen isolation passed.');
+const large = { ...defaultOverviewState, specimen: 'layout-sample-45', page: 6, index: 1000, sort: 'name-desc', query: 'sample', view: 'results' };
+assert.deepEqual(readOverviewState(overviewHash(large), discoveryFixtures, 'de'), large);
+const empty = readOverviewState('#query=impossible&specimen=stegosaurus&page=7&view=spotlight');
+assert.equal(empty.specimen, null);
+assert.equal(empty.page, 1);
+assert.deepEqual(readOverviewState(overviewHash(empty)), empty);
+assert.equal(readOverviewState('#query=%20%20&index=999999').index, 100000);
+assert.equal(readOverviewState('#specimen=https://bad.invalid&query=%E0%A4%A').specimen, null);
+console.log('Overview fragments: all discovery context, malformed IDs/categories/pages, zero results, locale, exhibit return and playback isolation passed.');

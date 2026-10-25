@@ -6,16 +6,19 @@ import {
 } from './content.ts';
 
 export type SpecimenId = 'ankylosaurus' | 'stegosaurus';
+export type DietId = 'herbivore' | 'carnivore' | 'omnivore';
+export type PeriodId = 'triassic' | 'jurassic' | 'cretaceous';
 
 export type Specimen = Readonly<{
-  id: SpecimenId;
+  id: string;
   scientificName: string;
-  exhibitPath: `/specimens/${SpecimenId}/`;
-  poster: `${SpecimenId}-poster.png`;
-  diet: 'herbivore';
-  period: 'late-cretaceous' | 'late-jurassic';
-  studyCapability: 'guided' | 'exploration';
-  source: string;
+  exhibitPath: `/specimens/${SpecimenId}/` | null;
+  poster: `${SpecimenId}-poster.png` | null;
+  diet: DietId | null;
+  periods: readonly PeriodId[];
+  period: 'late-cretaceous' | 'late-jurassic' | null;
+  studyCapability: 'guided' | 'exploration' | null;
+  source: string | null;
   text: Readonly<Record<'en' | 'de', Readonly<{
     name: string;
     description: string;
@@ -33,6 +36,7 @@ export const specimens = [
     poster: 'ankylosaurus-poster.png',
     diet: 'herbivore',
     period: 'late-cretaceous',
+    periods: ['cretaceous'],
     studyCapability: 'guided',
     source: 'https://www.nhm.ac.uk/discover/dino-directory/Ankylosaurus.html',
     text: {
@@ -59,6 +63,7 @@ export const specimens = [
     poster: 'stegosaurus-poster.png',
     diet: 'herbivore',
     period: 'late-jurassic',
+    periods: ['jurassic'],
     studyCapability: 'exploration',
     source: 'https://www.nhm.ac.uk/discover/stegosaurus-brought-to-life.html',
     text: {
