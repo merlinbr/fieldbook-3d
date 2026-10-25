@@ -47,6 +47,29 @@ The ignored `media-dev/ankylosaurus.glb` is a real export of the supplied exampl
 
 `npm run media:dev` serves the fixed model and optional `media-dev/ankylosaurus-en.mp3` / `media-dev/ankylosaurus-de.mp3` endpoints on `http://127.0.0.1:5194`, with GET/HEAD, byte ranges, and CORS. Missing audio returns 404. It does not serve application files or expose a directory listing. This workspace's ignored `.env` is configured with both complete versions. For a fresh checkout, set `PUBLIC_ANKYLOSAURUS_STUDY_VERSION` to the [complete English JSON](docs/assets/ankylosaurus-narration.en.json), not just its URL; see [English configuration](docs/assets/ankylosaurus-narration.md#configure-the-approved-recording). Optionally set `PUBLIC_ANKYLOSAURUS_STUDY_VERSION_DE` to the [complete German JSON](docs/assets/ankylosaurus-narration.de.json); see [German intake and configuration](docs/assets/ankylosaurus-narration.de.md). Absent German configuration uses visibly labeled English narration with English captions in the German interface. Invalid configured data or a recording error stays explicit. No default or fabricated timings are used. Keep the media process running; restart an older responder to load both audio routes.
 
+### Compact mobile study — issue #32
+
+At the existing **48rem** breakpoint, both Ankylosaurus exhibits group the current chapter, narration language, caption, timeline and transport into one player below the model. Mobile transport uses concise visible labels with full accessible names. Loading, paused and error information remains visible; routine playing status stays available to assistive technology without repeating it visually. Scale's numbered length/human legend and World's location/time band remain in normal flow with their chapter.
+
+**Chapters / Kapitel** starts collapsed. Its inline list marks the current chapter; choosing one seeks to its authored beginning, preserves the playing/paused request, closes the list and returns focus to the disclosure button. Escape or the button closes it without seeking. Hidden choices leave keyboard navigation and the accessibility tree. Desktop retains the four visible chapter choices.
+
+Mobile exploration controls disappear while guided playback owns the scene and return when paused. Resume clears inspection and transfers focus away from disappearing notes/controls. Retry and Exit remain accessible on errors. The viewer, native-audio clock, recordings, saved-view restoration and language handoff are unchanged; Stegosaurus remains exploration-only.
+
+Matched local captures at **390×844**, paused at Meet's beginning with the model stage aligned to the viewport top, retain the same **438.875px** stage height. The vertical extent needed to include the model, caption, timeline and primary transport is:
+
+| Interface | Before (CSS px) | After (CSS px) |
+|---|---:|---:|
+| English | 900 | 721 |
+| German | 979 | 745 |
+
+Before/after captures and geometry are under ignored `media-dev/issue32-verification/`. Playing captures also show model, captions and Pause together; the shorter document can clamp scrolling before the stage reaches the viewport top, recorded separately in `after.json`. Enlarged text is allowed to wrap and scroll rather than clipping content or shrinking controls.
+
+Run `npm run check:study-browser` against a fresh local static preview and the real-media host, with the same external Playwright/browser/preview overrides as `check:browser`. It exercises EN/DE authored chapter starts, disclosure and breakpoint focus, transport/captions, paused inspection, loading, error recovery, completion, language handoff and rendered saved-view restoration. Its portrait/landscape matrix includes 200% root text, reduced motion, overflow/clipping checks and at least 44×44px study targets. Delayed loading uses actual HTTP media; the bounded buffering probe uses synthetic `waiting`/`canplay` events and a test-only readiness override on the real Audio element, not a certified physical network stall.
+
+Observed on 2026-10-25: type checking (zero errors/warnings), camera/anatomy/study regressions, the local static build, localized static-page checks, the focused study browser suite and the existing exhibit browser suite passed. Final browser checks include mobile/desktop chapter-focus transfer, focused-note error recovery, EN/DE saved-view restoration, and Stegosaurus touch/exploration compatibility. Existing large-chunk and terminal-color build warnings remain unsuppressed.
+
+Evidence limits: desktop Chromium, local HTTP GLB/MP3 delivery, software rendering and browser/device emulation. No physical phone, Safari/iOS, actual screen reader, production-host delivery or subjective narration audition is certified by these checks.
+
 ## Stegosaurus model preview
 
 The approved low-poly `Stegosaurus stenops` source is narrowly tracked under `example project/low-poly/`: `stegosaurus.js`, `model-geometry.js`, and `walk-cycle.js`. The rest of that local example collection remains ignored. The standalone check below carries the Stegosaurus geometry/anatomy/gait assertions from the local collection check; it does not require the other dinosaur or environment sources.

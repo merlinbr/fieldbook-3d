@@ -15,6 +15,7 @@
     "check:overview": "node checks/catalog.mjs && node checks/catalog-query.mjs && node checks/overview-state.mjs && node checks/poster-url.mjs",
     "check:browser": "node checks/exhibit-browser.cjs",
     "check:spotlight-browser": "node checks/spotlight-browser.cjs",
+    "check:study-browser": "node checks/study-browser.cjs",
     "check:discovery-browser": "node checks/discovery-browser.cjs",
     "dev:discovery-fixtures": "vite dev --config checks/discovery.vite.config.ts --host 127.0.0.1 --port 5175",
     "check:camera": "node checks/camera-fit.mjs && node checks/scale-comparison.mjs",
