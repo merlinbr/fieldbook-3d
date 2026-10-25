@@ -63,6 +63,13 @@ async function assertStudyLayout(page) {
     return [];
   }));
   assert.deepEqual(clipped, [], `study content clipped by overflow: ${clipped.join(', ')}`);
+  const splitLabels = await page.locator('.study-play, .study-controls button[aria-pressed]').evaluateAll(buttons => buttons.flatMap(button => {
+    const range = document.createRange();
+    range.selectNodeContents(button);
+    const lines = new Set([...range.getClientRects()].filter(rect => rect.width > 0).map(rect => rect.top));
+    return lines.size > 1 ? [button.textContent.trim()] : [];
+  }));
+  assert.deepEqual(splitLabels, [], `study labels split across lines: ${splitLabels.join(', ')}`);
 }
 
 (async () => {
@@ -197,9 +204,11 @@ async function assertStudyLayout(page) {
       await page.waitForFunction(() => window.__studyAudio.every(audio => audio.paused) && !document.querySelector('.anatomy-controls button')?.disabled);
       for (const [name, viewport, fontSize, reducedMotion] of [
         ['portrait', { width: 390, height: 844 }, '100%', 'reduce'],
+        ['portrait-375', { width: 375, height: 844 }, '100%', 'reduce'],
         ['landscape-mobile', { width: 740, height: 390 }, '100%', 'reduce'],
         ['landscape-wide', { width: 844, height: 390 }, '100%', 'reduce'],
         ['portrait-large-text', { width: 390, height: 844 }, '200%', 'reduce'],
+        ['portrait-375-large-text', { width: 375, height: 844 }, '200%', 'reduce'],
         ['landscape-large-text', { width: 740, height: 390 }, '200%', 'reduce'],
         ['narrow-large-text', { width: 320, height: 720 }, '200%', 'reduce']
       ]) {
