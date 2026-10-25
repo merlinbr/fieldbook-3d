@@ -1,5 +1,7 @@
 # Stegosaurus Exhibit Implementation Plan
 
+Approved for native execution on 2026-10-25. Implementation and local acceptance are recorded in [the asset notes](../../assets/stegosaurus.md#local-exhibit-verification--2026-10-25); production publication remains a separate external prerequisite.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Execution method is selected by the user before implementation.
 
 **Goal:** Deliver the approved Stegosaurus as an English/German, exploration-only exhibit with accurate anatomy membership, an explicitly interpreted scale, and usable navigation from Ankylosaurus.

@@ -1,6 +1,8 @@
 # Fieldbook 3D
 
-One explorable, resting **Ankylosaurus** exhibit: prerendered English/German content, a browser-only Three.js GLB viewer, warm lighting and a simple plinth. Start plays Meet → Scale → Armor → World through a complete English or German recording, with matching captions and chapter navigation. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. World returns to a wider specimen view with localized present-day North America wording and a Late Cretaceous time band marking 68–66 million years ago. Language changes restore a paused study and preserve its original return-to-Explore view. Cinema presentation adds focused warm lighting and restrained drifting dust; reduced motion retains the lighting without particles.
+Two explorable, resting exhibits, **Ankylosaurus** and **Stegosaurus**: prerendered English/German content, a shared browser-only Three.js GLB viewer, warm lighting and a simple plinth. Ankylosaurus Start plays Meet → Scale → Armor → World through a complete English or German recording, with matching captions and chapter navigation. Scale shows a calibrated 8 m animal, a generated 1.7 m human reference, and a head-to-tail length guide. World returns to a wider specimen view with localized present-day North America wording and a Late Cretaceous time band marking 68–66 million years ago. Language changes restore a paused study and preserve its original return-to-Explore view. Cinema presentation adds focused warm lighting and restrained drifting dust; reduced motion retains the lighting without particles.
+
+Stegosaurus is exploration-only, with head, dorsal-plate and tail-spike inspection. Its comparison represents a **9 m** animal alongside the same 1.7 m human, explicitly qualified as an illustrative scale for a stylized reconstruction. It has no narration, captions or field-study controls. Reciprocal exhibit links retain the language and leave study playback behind. The [asset notes](docs/assets/stegosaurus.md#represented-scale-and-anatomy-sources) document the scale choice and anatomy sources.
 
 ## Issue #1 delivery gate — 2026-10-04
 
@@ -27,7 +29,7 @@ In a second terminal:
 npm run dev
 ```
 
-Open `/en/specimens/ankylosaurus/` or `/de/specimens/ankylosaurus/`. `/` redirects to the English exhibit and contains a fallback link. Locale links reload the document. During a study, a validated destination-link query transfers paused context and is consumed without another reload. No saved preferences, cookies, or language detection are required.
+Open `/en/specimens/ankylosaurus/`, `/de/specimens/ankylosaurus/`, `/en/specimens/stegosaurus/` or `/de/specimens/stegosaurus/`. `/` redirects to English Ankylosaurus and contains a fallback link. Locale links reload the same specimen in the chosen language. During an Ankylosaurus study, a validated destination-link query transfers paused context and is consumed without another reload. Species links reload the destination exhibit without copying study context; navigating back starts ordinary exploration. No saved preferences, cookies, or language detection are required.
 
 ### Shared specimen viewer
 
@@ -37,7 +39,7 @@ For exploration-only specimens, set both configuration capability and viewer stu
 
 The exploration **Scale comparison** toggle uses `scale.lengthMetres` for model calibration, guide, framing, and localized labels, alongside the existing 1.7 m human. A null scale omits comparison and metre labels; no default length is inferred. Ankylosaurus explicitly supplies 8 m. Reset leaves standalone comparison while preserving selected anatomy. Starting a guided study first restores ordinary exploration, and the study owns comparison until Exit, including while paused.
 
-Run `npm run check`, `npm run check:camera`, `npm run check:anatomy`, and `npm run check:study` after changing configuration or viewer behavior. Anatomy checks exercise the canonical Stegosaurus source with root Three.js deduplication, including all 19 plates across parent groups and the four spikes. The issue #15 plan records the actual browser smoke; its temporary route was removed. There is no production Stegosaurus exhibit or scientific scale choice in this change.
+Run `npm run check`, `npm run check:exhibits`, `npm run check:camera`, `npm run check:anatomy`, and `npm run check:study` after changing configuration or viewer behavior. Anatomy checks exercise production Stegosaurus selectors, including all 19 plates across parent groups and the four spikes. `check:exhibits` also regenerates an isolated GLB and checks actual loaded membership, material restoration and represented scale. Run `npm run check:exhibit-pages` after building to verify all four localized pages, metadata and navigation. The issue #15 temporary route is gone; the permanent Stegosaurus exhibit now uses its own configuration and content.
 
 The ignored `media-dev/ankylosaurus.glb` is a real export of the supplied example, not a generated substitute in the application. It is present in this local workspace but deliberately absent from Git. A fresh checkout needs that asset regenerated or a rights-cleared externally hosted model URL. See [asset provenance and regeneration](docs/assets/ankylosaurus.md). Preserve the supplied Ankylosaurus source and example dependencies. The approved [Stegosaurus model](#stegosaurus-model-preview) is tracked separately from the rest of the local example; it does not change the Ankylosaurus export or add an application route.
 
@@ -59,7 +61,7 @@ Open the URL printed by Vite. Use the side, opposite-side, three-quarter, and to
 
 The model uses **2,976 of 3,000 triangles**: a fuller torso and neck transition, substantial hips and planted feet, nineteen thin staggered dorsal plates, four tail spikes, thirty-six shallow flank scales, brows, and nostrils. Narrow plate roots, tapered crowns, varied lean, and related tan shades keep overlapping plates distinct. Materials retain the olive/cream/tan palette and flat shading. Neck and tail plates follow their respective pivots; the check covers finite/nondegenerate geometry, alternating plates, ground clearance, three supporting feet during a full gait, and return to rest.
 
-The nineteen-plate/four-spike count references the Natural History Museum's [S. stenops specimen, Sophie](https://www.nhm.ac.uk/press-office/press-releases/world_s-most-complete-stegosaurus-goes-on-show.html). Proportions, colors, skin-scale placement, and other soft tissue are artistic choices, not a validated anatomical restoration. The model preview includes no application route, narration, or scientific scale calibration. The shared viewer supports specimen configuration (#15); the localized exhibit and evidence-based represented length remain in #16.
+The nineteen-plate/four-spike count references the Natural History Museum's [S. stenops specimen, Sophie](https://www.nhm.ac.uk/press-office/press-releases/world_s-most-complete-stegosaurus-goes-on-show.html). Proportions, colors, skin-scale placement, and other soft tissue are artistic choices, not a validated anatomical restoration. The standalone model preview has no narration or scientific scale calibration. The localized application exhibit consumes the exported GLB with a separately documented 9 m represented length; it does not claim to reconstruct Sophie.
 
 ## Stegosaurus GLB — issue #14
 
@@ -75,12 +77,13 @@ The export is ignored `media-dev/stegosaurus.glb`. Restart `npm run media:dev` t
 
 For visual verification, run `npm run preview:stegosaurus` and open `/compare.html` on the printed preview URL. It loads the real GLB from the separate media host and renders it beside the canonical source under identical lighting and camera settings. The side, opposite-side, and three-quarter controls affect both views. See [source provenance, exact regeneration, measured bounds, and verification](docs/assets/stegosaurus.md).
 
-`PUBLIC_STEGOSAURUS_MODEL_URL` is declared and illustrated in `.env.example` for #16; the current exhibit does not consume it. Stegosaurus publication authorization and production hosting/URL are **unconfirmed**. The existing production policy requires an absolute external HTTP(S) URL without credentials or loopback and an asset host allowing CORS from the application origin. Local export/preview is not production deployment.
+`PUBLIC_STEGOSAURUS_MODEL_URL` is declared and illustrated in `.env.example` and is consumed by both localized Stegosaurus routes. Stegosaurus publication authorization and production hosting/URL are **unconfirmed**. The shared model-URL policy requires an absolute external HTTP(S) URL without credentials or loopback in production, and the asset host must allow CORS from the application origin. Local export/preview is not production deployment.
 
 ## Check and build
 
 ```sh
 npm run check
+npm run check:exhibits
 npm run check:camera
 npm run check:anatomy
 npm run check:study
@@ -88,22 +91,31 @@ npm run check:stegosaurus
 npm run check:stegosaurus-export
 npm run check:media
 npm run build -- --mode development
+npm run check:exhibit-pages
 npm run preview
 ```
 
 `npm run check` first generates the ignored Paraglide runtime, so it works before a dev server or build has been run. `tools/paraglide.mjs` supplies the same compiler options to checks and the Vite plugin.
 
+Optional `npm run check:browser` runs the actual Chromium acceptance matrix against an already built and freshly started static preview, with the separate media server and both approved Ankylosaurus recordings configured. It requires an externally provided Playwright installation and browser; it adds no application dependency. Set `FIELDBOOK_PLAYWRIGHT` to that package's absolute path if it is not available through normal Node resolution, `FIELDBOOK_BROWSER_EXECUTABLE` to an installed Chromium executable if needed, and `FIELDBOOK_PREVIEW_URL` if the preview is not `http://127.0.0.1:4173`. It writes ignored screenshots and an observation log under `media-dev/issue16-verification/`. Restart the preview after rebuilding so it serves the current manifest. The matrix includes touch emulation, not physical-device certification, and intercepted fetch failure, not production-origin CORS verification.
+
 Development mode defaults to the separate loopback model URL. These commands exercise **local static media delivery**, not a production CDN deployment. The static site is written to `build/`; use a static host that maps directory URLs to `index.html`. No application server or locale middleware is required after prerendering.
 
-Production requires an explicit externally hosted model URL, supplied through the environment or a local ignored `.env` file:
+Production prerenders both exhibits and requires explicit externally hosted URLs for both models, supplied through the environment or a local ignored `.env` file. The following hosts are placeholders, not deployed media:
 
 ```sh
-PUBLIC_ANKYLOSAURUS_MODEL_URL=https://your-asset-host.example/ankylosaurus.glb npm run build
+PUBLIC_ANKYLOSAURUS_MODEL_URL=https://your-asset-host.example/ankylosaurus.glb PUBLIC_STEGOSAURUS_MODEL_URL=https://your-asset-host.example/stegosaurus.glb npm run build
 ```
 
-The example above uses POSIX shell syntax. In PowerShell, use `$env:PUBLIC_ANKYLOSAURUS_MODEL_URL = 'https://your-asset-host.example/ankylosaurus.glb'`, then `npm run build`.
+The example above uses POSIX shell syntax. In PowerShell:
 
-This public, **build-time** value must be an absolute HTTP(S) URL without credentials. Production rejects missing/loopback URLs. The asset host must allow CORS from the application's origin. No production asset host/CDN was provisioned here. Ankylosaurus publication authorization is recorded in its [provenance document](docs/assets/ankylosaurus.md); Stegosaurus authorization remains unconfirmed. Configure the deployment's actual URL; do not ship the loopback default or put GLB files in `static/`.
+```powershell
+$env:PUBLIC_ANKYLOSAURUS_MODEL_URL = 'https://your-asset-host.example/ankylosaurus.glb'
+$env:PUBLIC_STEGOSAURUS_MODEL_URL = 'https://your-asset-host.example/stegosaurus.glb'
+npm run build
+```
+
+These public, **build-time** values must be absolute HTTP(S) URLs without credentials. Production rejects missing/loopback URLs. The shared resolver in `src/lib/specimens/model-url.ts` enforces the same policy for both species. The asset host must allow CORS from the application's origin. No production asset host/CDN was provisioned here. Ankylosaurus publication authorization is recorded in its [provenance document](docs/assets/ankylosaurus.md); Stegosaurus authorization remains unconfirmed. Configure the deployment's actual URLs; do not ship the loopback defaults or put GLB files in `static/`.
 
 ## Viewer behavior
 

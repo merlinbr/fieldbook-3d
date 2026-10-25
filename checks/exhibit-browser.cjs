@@ -27,6 +27,14 @@ async function noOverflow(page) { assert(await page.evaluate(()=>document.docume
       for(const species of ['ankylosaurus','stegosaurus']) {
         await go(page,`/${locale}/specimens/${species}/`); await page.reload({waitUntil:'domcontentloaded'}); await ready(page);
         assert.match(await page.title(),new RegExp(species,'i')); await noOverflow(page);
+        if(species==='ankylosaurus') {
+          const anatomy=page.locator('.anatomy-controls button').first();await anatomy.focus();await page.keyboard.press('Enter');
+          await page.locator('.anatomy-note').waitFor();await button(page,t.close).focus();await page.keyboard.press('Escape');
+          assert(await anatomy.evaluate(el=>document.activeElement===el));
+          await button(page,t.scale).click();const label=await page.locator('.scale-legend').innerText();assert.match(label,/8 m/);assert(!/Represented length|Dargestellte Länge/.test(label));
+          await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'});await noOverflow(page);await snap(page,`${locale}-ankylosaurus-mobile-scale`);
+          await page.setViewportSize({width:1440,height:900});await page.emulateMedia({reducedMotion:'no-preference'});await button(page,t.reset).click();
+        }
       }
       assert.equal(await page.locator('.study-entry,.study-ui,.study-transport').count(),0);
       assert.equal(await page.locator('.viewer-stage canvas').getAttribute('aria-label'),locale==='en'?'Interactive 3D Stegosaurus specimen':'Interaktives 3D-Exemplar eines Stegosaurus');
