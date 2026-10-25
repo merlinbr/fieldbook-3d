@@ -7,6 +7,7 @@ const run = (change = {}, entries = discoveryFixtures, locale = 'en') => discove
 assert.equal(run().count, 52);
 assert.equal(run().pages, 7);
 assert.equal(run().pageEntries.length, 8);
+assert.equal(run().entries[0].id, 'ankylosaurus', 'Discovery always sorts A-Z');
 assert.equal(run({ page: 7 }).pageEntries.length, 4);
 assert.equal(run({ page: 999 }).state.page, 7);
 for (const page of [-1, 0, NaN, Infinity, 1.5]) assert.equal(run({ page }).state.page, 1);
@@ -28,7 +29,6 @@ assert.equal(run({ specimen: 'stegosaurus', query: 'nothing matches', view: 'spo
 assert.equal(run({ query: 'nothing matches', page: 6 }).state.page, 1);
 assert.equal(run({ page: 7, specimen: 'layout-sample-50' }, specimens).state.page, 1);
 assert.equal(run({ page: 7, specimen: 'layout-sample-50' }, specimens).state.specimen, 'ankylosaurus');
-assert.deepEqual(run({ sort: 'name-desc' }).entries.map(s => s.id), run().entries.map(s => s.id).reverse());
 const ties = ['b', 'a', 'c'].map(id => ({ ...specimens[0], id, text: { en: { name: 'Same' }, de: { name: 'Gleich' } } }));
 assert.deepEqual(run({}, ties).entries.map(s => s.id), ['a', 'b', 'c']);
 assert.deepEqual(run({}, ties.toReversed()).entries.map(s => s.id), ['a', 'b', 'c']);
